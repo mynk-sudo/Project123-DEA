@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>123DEA Ultimate: Analytics Workbench</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Plotly.js (Main Engine) -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <!-- Simple Statistics -->
+    <script src="https://unpkg.com/simple-statistics@7.8.3/dist/simple-statistics.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --secondary: #64748b;
+            --bg-canvas: #f8fafc;
+            --card-bg: #ffffff;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-canvas); color: #1e293b; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Animations */
+        .fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Chart Containers */
+        .chart-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+            padding: 1.5rem;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            min-height: 600px;
+        }
+        .chart-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            transform: translateY(-2px);
+            border-color: #cbd5e1;
+        }
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .chart-tag {
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border-radius: 4px;
+            letter-spacing: 0.05em;
+        }
+        /* Functional Tags */
+        .tag-dist { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+        .tag-rel { background: #fce7f3; color: #be185d; border: 1px solid #fbcfe8; }
+        .tag-multi { background: #f3e8ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+        .tag-stat { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+        .tag-geo { background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }
+        .tag-3d { background: #4f46e5; color: white; border: 1px solid #4338ca; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3); }
+
+        .analysis-box {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #f8fafc;
+            border-left: 3px solid #6366f1;
+            border-radius: 0 0.375rem 0.375rem 0;
+            font-size: 0.85rem;
+            color: #475569;
+            line-height: 1.6;
+            text-align: justify;
+            flex-shrink: 0;
+        }
+        .analysis-box strong { color: #1e293b; font-weight: 600; }
+
+        /* Navigation */
+        .nav-item {
+            cursor: pointer;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+            font-weight: 500;
+            color: #64748b;
+        }
+        .nav-item:hover { background-color: #f1f5f9; color: #0f172a; }
+        .nav-item.active { background-color: #eff6ff; color: #2563eb; }
+
+        /* Form Inputs */
+        select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        
+        /* Report Typography */
+        .report-section { margin-bottom: 3rem; }
+        .report-h3 { font-size: 1.25rem; font-weight: 700; color: #1e293b; margin-top: 2rem; margin-bottom: 1rem; border-left: 4px solid #4f46e5; padding-left: 1rem; }
+        .report-h4 { font-size: 1.1rem; font-weight: 600; color: #334155; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+        .report-p { margin-bottom: 1rem; color: #475569; line-height: 1.75; text-align: justify; }
+        .report-ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; color: #475569; }
+        .report-li { margin-bottom: 0.5rem; }
+        .report-fig-ref { color: #4f46e5; font-weight: 600; cursor: pointer; }
+        .report-fig-ref:hover { text-decoration: underline; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden text-slate-800">
+
+    <!-- Top Navbar -->
+    <nav class="bg-white border-b border-slate-200 h-16 flex-none z-20 shadow-sm">
+        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 h-full">
+            <div class="flex justify-between items-center h-full">
+                <div class="flex items-center gap-3">
+                    <div class="bg-gradient-to-br from-indigo-600 to-violet-600 text-white font-bold p-1.5 rounded-lg shadow-lg shadow-indigo-500/30">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                    </div>
+                    <span class="text-xl font-bold tracking-tight text-slate-900">123DEA <span class="text-indigo-600">Ultimate</span></span>
+                </div>
+                <div class="flex space-x-1 bg-slate-100 p-1 rounded-lg">
+                    <button class="nav-item active text-sm" onclick="switchTab('data')">1. Data</button>
+                    <button class="nav-item text-sm" onclick="switchTab('eda')">2. EDA & Stats</button>
+                    <button class="nav-item text-sm" onclick="switchTab('regression')">3. Regression</button>
+                    <button class="nav-item text-sm" onclick="switchTab('dea')">4. DEA Model</button>
+                    <button class="nav-item text-sm bg-indigo-50 text-indigo-700 border border-indigo-200" onclick="switchTab('summary')">5. Summary Report</button>
+                </div>
+                <div class="flex items-center">
+                    <div id="status-indicator" class="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
+                        <span class="w-2 h-2 rounded-full bg-slate-300"></span>
+                        <span class="text-xs font-semibold text-slate-500">Waiting for Data</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Workspace -->
+    <main class="flex-grow overflow-auto p-6 relative bg-slate-50/50">
+        
+        <!-- VIEW 1: DATA INGESTION -->
+        <div id="view-data" class="fade-in max-w-6xl mx-auto space-y-6">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+                <h2 class="text-2xl font-bold text-slate-900 mb-2">Data Ingestion</h2>
+                <p class="text-slate-500 mb-6">Upload your dataset to begin. Supports CSV format.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Upload -->
+                    <div class="border-2 border-dashed border-slate-300 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-slate-50 transition-colors cursor-pointer group" onclick="document.getElementById('csv-upload').click()">
+                        <div class="bg-indigo-50 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
+                            <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                        </div>
+                        <h3 class="font-semibold text-slate-900">Upload CSV File</h3>
+                        <p class="text-sm text-slate-500 mt-1">Drag and drop or click to browse</p>
+                        <input id="csv-upload" type="file" accept=".csv" class="hidden" onchange="handleFileUpload(this)">
+                    </div>
+
+                    <!-- Sample -->
+                    <div class="bg-slate-50 rounded-xl p-8 border border-slate-200">
+                        <h3 class="font-semibold text-slate-900 mb-4">Load Benchmark Data</h3>
+                        <div class="space-y-3">
+                            <button onclick="loadSample('universities')" class="w-full text-left px-4 py-3 bg-white border border-slate-200 rounded-lg hover:border-indigo-500 hover:shadow-md transition-all flex justify-between items-center group">
+                                <div>
+                                    <span class="font-medium text-slate-800">University Performance</span>
+                                    <p class="text-xs text-slate-500">150 DMUs • 3 Inputs • 3 Outputs</p>
+                                </div>
+                                <svg class="w-5 h-5 text-slate-300 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            </button>
+                            <button onclick="loadSample('banks')" class="w-full text-left px-4 py-3 bg-white border border-slate-200 rounded-lg hover:border-indigo-500 hover:shadow-md transition-all flex justify-between items-center group">
+                                <div>
+                                    <span class="font-medium text-slate-800">Bank Branches</span>
+                                    <p class="text-xs text-slate-500">50 DMUs • 4 Inputs • 3 Outputs</p>
+                                </div>
+                                <svg class="w-5 h-5 text-slate-300 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview -->
+            <div id="data-preview-card" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col animate-fade-in">
+                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                    <h3 class="font-semibold text-slate-900">Dataset Preview</h3>
+                    <span id="row-count" class="text-xs font-mono bg-white border px-2 py-1 rounded text-slate-500"></span>
+                </div>
+                <div class="overflow-x-auto max-h-96">
+                    <table id="preview-table" class="min-w-full divide-y divide-slate-200 text-sm"></table>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: EDA & STATS -->
+        <div id="view-eda" class="hidden fade-in space-y-6">
+            
+            <!-- Global Variable Selection Bar -->
+            <div class="sticky top-0 z-10 bg-white/90 backdrop-blur-md p-4 rounded-xl border border-indigo-100 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div class="flex items-center gap-2">
+                     <span class="bg-indigo-100 text-indigo-700 p-2 rounded-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                     </span>
+                     <span class="font-bold text-slate-800 text-sm uppercase tracking-wide">Analysis Configuration</span>
+                </div>
+                <div class="flex gap-4 w-full md:w-auto overflow-x-auto">
+                    <div class="min-w-[150px]">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Variable X (Primary)</label>
+                        <select id="eda-var1" class="w-full text-sm border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" onchange="renderEDACharts()"></select>
+                    </div>
+                    <div class="min-w-[150px]">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Variable Y (Secondary)</label>
+                        <select id="eda-var2" class="w-full text-sm border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" onchange="renderEDACharts()"></select>
+                    </div>
+                    <div class="min-w-[150px]">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Variable Z (Size/Color)</label>
+                        <select id="eda-var3" class="w-full text-sm border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" onchange="renderEDACharts()"></select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Sidebar: Basic Stats -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            Descriptive Statistics
+                        </h3>
+                        <div id="stats-table-container" class="overflow-x-auto max-h-[500px]">
+                            <p class="text-sm text-slate-400 italic">Load data to view statistics.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Main EDA Content -->
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                         <h3 class="font-bold text-slate-800 mb-2">Data Completeness Matrix</h3>
+                         <div id="missingno-chart" class="h-40 w-full"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 20+ FIGURES GRID FOR EDA -->
+            <div class="pt-8 border-t border-slate-200">
+                <h2 class="text-2xl font-bold text-slate-900 mb-6">Exploratory Analysis Gallery</h2>
+                <div id="eda-gallery" class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    <!-- EDA Charts injected here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 3: REGRESSION -->
+        <div id="view-regression" class="hidden fade-in max-w-7xl mx-auto space-y-8">
+             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <!-- Controls -->
+                <div class="lg:col-span-1 bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-fit">
+                    <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        Model Configuration
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Dependent Variable (Y)</label>
+                            <select id="reg-y" class="w-full rounded-md border-slate-300 shadow-sm text-sm p-2 bg-slate-50"></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Independent Variable (X)</label>
+                            <select id="reg-x" class="w-full rounded-md border-slate-300 shadow-sm text-sm p-2 bg-slate-50"></select>
+                        </div>
+                        <button onclick="runRegression()" class="w-full bg-slate-800 text-white py-2 rounded-lg text-sm font-medium hover:bg-slate-900 transition-colors shadow-md shadow-slate-300 transform active:scale-95">Calculate Model</button>
+                    </div>
+                    
+                    <div id="reg-results" class="mt-8 pt-6 border-t border-slate-100 hidden">
+                        <h4 class="font-semibold text-sm mb-2 text-slate-900">Model Summary</h4>
+                        <div class="space-y-2 text-sm text-slate-600">
+                            <div class="flex justify-between"><span>R-Squared:</span> <span id="reg-r2" class="font-mono font-bold text-indigo-600"></span></div>
+                            <div class="flex justify-between"><span>Slope (m):</span> <span id="reg-slope" class="font-mono"></span></div>
+                            <div class="flex justify-between"><span>Intercept (c):</span> <span id="reg-intercept" class="font-mono"></span></div>
+                            <div class="mt-3 p-3 bg-slate-50 rounded border border-slate-200 text-xs font-mono text-slate-700 break-all" id="reg-eq"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Plot -->
+                <div class="lg:col-span-3 chart-card">
+                    <div class="chart-header">
+                        <h4 class="font-bold text-slate-800">Figure 1: Regression Fit</h4>
+                        <span class="chart-tag tag-rel">Regression</span>
+                    </div>
+                    <div id="reg-chart" class="flex-grow w-full min-h-[500px]"></div>
+                    <div class="analysis-box">
+                        <strong>Analysis:</strong> This main scatter plot visualizes the linear relationship between the dependent variable (Y) and the independent variable (X). The blue dots represent the observed data points, while the solid line represents the Ordinary Least Squares (OLS) regression fit. The closer the blue dots hug this line, the stronger the relationship. Interpretation relies on the slope (direction of impact) and the R-Squared value. A steep positive slope indicates a strong positive impact, while a flat line suggests no relationship. A high R-Squared (close to 1.0) means the model explains most of the variance; a low value (close to 0) implies the model fails to capture the underlying pattern. Deviations from the line represent 'residuals' or prediction errors.
+                    </div>
+                </div>
+             </div>
+
+             <!-- NEW DIAGNOSTIC CHARTS GALLERY -->
+             <div class="border-t border-slate-200 pt-8">
+                <h2 class="text-2xl font-bold text-slate-900 mb-6 px-2">Diagnostic & Performance Analysis</h2>
+                <div id="reg-gallery" class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    <!-- New Regression Figures injected here -->
+                </div>
+             </div>
+        </div>
+
+        <!-- VIEW 4: DEA MODEL -->
+        <div id="view-dea" class="hidden fade-in space-y-6">
+            <!-- Config Panel -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div class="flex flex-col md:flex-row gap-6">
+                    <div class="flex-1 grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 uppercase">DMU Label</label>
+                            <select id="dea-dmu" class="w-full mt-1 border-slate-300 rounded-md text-sm"></select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 uppercase">Inputs (Resources)</label>
+                            <select id="dea-inputs" multiple class="w-full mt-1 border-slate-300 rounded-md text-sm h-20 bg-slate-50"></select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 uppercase">Outputs (Products)</label>
+                            <select id="dea-outputs" multiple class="w-full mt-1 border-slate-300 rounded-md text-sm h-20 bg-slate-50"></select>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-48 flex flex-col justify-end space-y-2">
+                         <select id="dea-orientation" class="w-full border-slate-300 rounded-md text-sm">
+                             <option value="input">Input Oriented (Min)</option>
+                             <option value="output">Output Oriented (Max)</option>
+                         </select>
+                         <select id="dea-rts" class="w-full border-slate-300 rounded-md text-sm">
+                             <option value="crs">Constant (CRS)</option>
+                             <option value="vrs">Variable (VRS)</option>
+                         </select>
+                         <button onclick="runDEA()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg shadow-md shadow-indigo-200 transition-all transform active:scale-95">
+                             Run Analysis
+                         </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Grid -->
+            <div id="dea-results-area" class="hidden space-y-6">
+                <!-- Summary Stats -->
+                <div class="grid grid-cols-4 gap-4">
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="text-xs text-slate-500 font-bold uppercase tracking-wider">Avg Efficiency</div>
+                        <div id="res-mean" class="text-2xl font-bold text-indigo-600 mt-1">-</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="text-xs text-slate-500 font-bold uppercase tracking-wider">Efficient Units</div>
+                        <div id="res-count" class="text-2xl font-bold text-emerald-600 mt-1">-</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="text-xs text-slate-500 font-bold uppercase tracking-wider">Min Efficiency</div>
+                        <div id="res-min" class="text-2xl font-bold text-rose-600 mt-1">-</div>
+                    </div>
+                    <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-xl shadow-sm flex items-center justify-center cursor-pointer hover:bg-emerald-100 transition-colors group" onclick="downloadExcel()">
+                        <div class="text-center">
+                            <svg class="w-6 h-6 mx-auto text-emerald-600 mb-1 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            <span class="text-xs font-bold text-emerald-800">Download Excel Report</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 20 DEA FIGURES GRID -->
+                <div id="dea-figures-container" class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    <!-- Figures injected here by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 5: SUMMARY REPORT -->
+        <div id="view-summary" class="hidden fade-in max-w-5xl mx-auto space-y-8">
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+                <div class="bg-indigo-900 px-8 py-6 border-b border-indigo-800">
+                    <h2 class="text-3xl font-bold text-white mb-2">Executive Analytics Report</h2>
+                    <p class="text-indigo-200 text-sm">Automated Performance Synthesis & Strategic Recommendations</p>
+                </div>
+                <div class="p-10 space-y-8">
+                    <div id="summary-content" class="text-slate-700">
+                        <!-- Dynamic Content Injected Here -->
+                        <div class="flex flex-col items-center justify-center py-20 text-slate-400">
+                            <svg class="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                            <p>Please run the <strong>DEA Model</strong> (Stage 4) to generate this report.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- LOGIC -->
+    <script>
+        // --- GLOBAL STATE ---
+        let rawData = [];
+        let headers = [];
+        let numericHeaders = [];
+        let deaResults = []; 
+        let currentDEAConfig = {};
+
+        // --- 1. DATA HANDLING ---
+        function handleFileUpload(input) {
+            const file = input.files[0];
+            if (file) {
+                Papa.parse(file, {
+                    header: true,
+                    dynamicTyping: true,
+                    skipEmptyLines: true,
+                    complete: (results) => processData(results.data, results.meta.fields)
+                });
+            }
+        }
+
+        const sampleData = {
+            universities: `Uni,Students,Staff,Funding,Publications,Graduates,Patents\nU1,25000,1200,450,850,5500,12\nU2,18000,900,320,500,4200,8\nU3,32000,1600,600,1200,7500,18\nU4,15000,750,280,300,3500,4\nU5,28000,1400,520,950,6200,14\nU6,22000,1100,400,700,5100,10\nU7,35000,1800,680,1400,8200,21\nU8,12000,600,200,200,2800,2\nU9,40000,2000,750,1600,9000,25\nU10,26000,1300,480,880,5800,12\n${Array.from({length:40}, (_,i)=>`U${i+11},${Math.floor(10000+Math.random()*30000)},${Math.floor(500+Math.random()*1500)},${Math.floor(150+Math.random()*600)},${Math.floor(100+Math.random()*1500)},${Math.floor(2000+Math.random()*7000)},${Math.floor(1+Math.random()*20)}`).join('\n')}`,
+            banks: `Branch,Staff,Rent,OpCost,NewAccts,Loans,NPS\nB1,5,15,20,120,450,8.5\nB2,8,22,35,180,620,9.1\nB3,4,12,18,90,300,8.0\nB4,6,18,25,150,500,8.8\nB5,7,20,28,160,550,8.9\n${Array.from({length:45}, (_,i)=>`B${i+6},${Math.floor(3+Math.random()*8)},${Math.floor(10+Math.random()*20)},${Math.floor(15+Math.random()*25)},${Math.floor(50+Math.random()*200)},${Math.floor(200+Math.random()*600)},${(7+Math.random()*2.5).toFixed(1)}`).join('\n')}`
+        };
+
+        function loadSample(type) {
+            Papa.parse(sampleData[type], { header: true, dynamicTyping: true, skipEmptyLines: true, complete: (results) => processData(results.data, results.meta.fields) });
+        }
+
+        function processData(data, fields) {
+            try {
+                if(!data || data.length === 0) { console.error("No data found"); return; }
+                rawData = data;
+                headers = fields;
+                numericHeaders = fields.filter(f => {
+                    return data.some(r => typeof r[f] === 'number' && !isNaN(r[f]));
+                });
+
+                document.getElementById('row-count').innerText = `${data.length} Rows`;
+                renderPreviewTable(data.slice(0, 10), fields);
+                document.getElementById('data-preview-card').classList.remove('hidden');
+                
+                const selects = ['reg-y', 'reg-x', 'dea-inputs', 'dea-outputs', 'eda-var1', 'eda-var2', 'eda-var3'];
+                selects.forEach(id => populateSelects(id, numericHeaders));
+                populateSelects('dea-dmu', fields);
+
+                if(numericHeaders.length > 0) document.getElementById('eda-var1').value = numericHeaders[0];
+                if(numericHeaders.length > 1) document.getElementById('eda-var2').value = numericHeaders[1];
+                if(numericHeaders.length > 2) document.getElementById('eda-var3').value = numericHeaders[2];
+
+                updateStatus('Data Loaded', 'success');
+                calculateDescriptiveStats();
+                renderEDACharts();
+            } catch (e) {
+                console.error("Error in processData:", e);
+                alert("Error processing data: " + e.message);
+            }
+        }
+
+        function renderPreviewTable(rows, cols) {
+            const thead = `<thead><tr class="bg-slate-50 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">${cols.map(c => `<th class="px-4 py-3">${c}</th>`).join('')}</tr></thead>`;
+            const tbody = `<tbody class="bg-white divide-y divide-slate-100">${rows.map(r => `<tr class="hover:bg-slate-50">${cols.map(c => `<td class="px-4 py-2 whitespace-nowrap text-slate-700">${r[c]}</td>`).join('')}</tr>`).join('')}</tbody>`;
+            document.getElementById('preview-table').innerHTML = thead + tbody;
+        }
+
+        function populateSelects(id, options) {
+            const sel = document.getElementById(id);
+            sel.innerHTML = options.map(o => `<option value="${o}">${o}</option>`).join('');
+        }
+
+        // --- 2. EDA & STATS LOGIC ---
+        function calculateDescriptiveStats() {
+            try {
+                if (typeof ss === 'undefined') return;
+                const stats = numericHeaders.map(col => {
+                    const values = rawData.map(r => r[col]).filter(v => typeof v === 'number' && !isNaN(v));
+                    if (values.length < 3) return { Variable: col, Mean: '-', Median: '-', Min: '-', Max: '-', StdDev: '-', Skew: '-' };
+                    return {
+                        Variable: col,
+                        Mean: ss.mean(values).toFixed(2),
+                        Median: ss.median(values).toFixed(2),
+                        Min: ss.min(values).toFixed(2),
+                        Max: ss.max(values).toFixed(2),
+                        StdDev: ss.standardDeviation(values).toFixed(2),
+                        Skew: ss.sampleSkewness(values).toFixed(2)
+                    };
+                });
+                const html = `
+                    <table class="min-w-full text-xs text-left">
+                        <thead class="bg-slate-50 font-semibold text-slate-500">
+                            <tr><th class="p-2">Var</th><th class="p-2">Mean</th><th class="p-2">Med</th><th class="p-2">SD</th><th class="p-2">Skew</th></tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            ${stats.map(s => `<tr><td class="p-2 font-bold text-indigo-900">${s.Variable}</td><td class="p-2">${s.Mean}</td><td class="p-2">${s.Median}</td><td class="p-2">${s.StdDev}</td><td class="p-2">${s.Skew}</td></tr>`).join('')}
+                        </tbody>
+                    </table>
+                `;
+                document.getElementById('stats-table-container').innerHTML = html;
+            } catch(e) { console.error(e); }
+        }
+
+        function renderEDACharts() {
+            try {
+                if (typeof ss === 'undefined') return;
+                const v1 = document.getElementById('eda-var1').value;
+                const v2 = document.getElementById('eda-var2').value;
+                const v3 = document.getElementById('eda-var3').value;
+                
+                if(!v1 || !v2) return;
+
+                const x1 = rawData.map(r=>r[v1]), x2 = rawData.map(r=>r[v2]), x3 = rawData.map(r=>r[v3]);
+
+                const z = rawData.map(r => headers.map(h => (r[h] === null || r[h] === "" ? 0 : 1)));
+                Plotly.newPlot('missingno-chart', [{ z: z, x: headers, type: 'heatmap', colorscale: [[0, 'white'], [1, '#475569']], showscale: false }], { margin: {t:20, b:40, l:30, r:10}, paper_bgcolor: 'transparent', yaxis: {showticklabels: false, ticks: ''}, xaxis: {side: 'bottom'} }, {displayModeBar: false});
+
+                const gallery = document.getElementById('eda-gallery');
+                gallery.innerHTML = '';
+                
+                const addEDA = (title, category, desc, plotFn) => {
+                    const div = document.createElement('div');
+                    div.className = 'chart-card';
+                    let tagClass = 'tag-dist';
+                    if(category.includes('Rel')) tagClass = 'tag-rel';
+                    if(category.includes('Multi')) tagClass = 'tag-multi';
+                    if(category.includes('Stat')) tagClass = 'tag-stat';
+                    if(category.includes('3D')) tagClass = 'tag-3d';
+                    
+                    div.innerHTML = `
+                        <div class="chart-header"><h4 class="font-bold text-slate-800">${title}</h4><span class="chart-tag ${tagClass}">${category}</span></div>
+                        <div id="eda-${gallery.children.length}" class="flex-grow"></div>
+                        <div class="analysis-box"><strong>Analysis:</strong> ${desc}</div>
+                    `;
+                    gallery.appendChild(div);
+                    try { plotFn(`eda-${gallery.children.length-1}`); } catch(e) { console.warn(`Chart ${title} failed:`, e); }
+                };
+
+                const commonLayout = { margin:{t:30,l:50,r:20,b:50}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{family:'Inter'} };
+
+                addEDA('1. Distribution Histogram', 'Distribution', 
+                    `This histogram provides a fundamental view of the frequency distribution for <strong>${v1}</strong>. The horizontal axis represents the range of values divided into intervals (bins), while the vertical axis shows how many data points fall into each bin. A symmetric, bell-shaped curve suggests a Normal distribution, which is often assumed in parametric statistical tests. However, if the chart is skewed to the right (long tail on the right), it indicates that while most values are low, there are a few exceptionally high values pushing the average up. In the context of DEA, highly skewed input data can sometimes distort efficiency scores, making normalization or transformation necessary. Action: Check for skewness to decide if data transformation is needed before modeling.`, 
+                    id=>Plotly.newPlot(id, [{x:x1, type:'histogram', marker:{color:'#6366f1', line:{color:'white', width:1}}}], {...commonLayout, xaxis:{title:v1}}, {responsive:true})
+                );
+                
+                addEDA('2. Box Plot Summary', 'Distribution', 
+                    `This box plot offers a robust statistical summary of <strong>${v1}</strong>, focusing on quartiles rather than averages. The central rectangular box encapsulates the middle 50% of your data (the Interquartile Range), providing a clear view of where the bulk of values lie. The line inside the box marks the median, which—unlike the mean—is not pulled by extreme values. The 'whiskers' extend to show the rest of the distribution, excluding outliers. Individual points plotted beyond these whiskers are potential outliers: data points that are statistically distant from the rest. Identifying these early is crucial, as DEA is very sensitive to extreme values. Action: Investigate any points beyond whiskers as potential data entry errors or unique cases.`, 
+                    id=>Plotly.newPlot(id, [{y:x1, type:'box', boxpoints:'outliers', marker:{color:'#8b5cf6'}}], {...commonLayout, yaxis:{title:v1}}, {responsive:true})
+                );
+                
+                addEDA('3. Violin Density', 'Distribution', 
+                    `The Violin plot is an advanced variation of the box plot that visualizes the probability density of <strong>${v2}</strong>. While a box plot only shows summary statistics, the violin's shape reveals the nuance of the distribution's structure. Wider sections of the violin indicate a higher probability that members of the population will take on the given value; narrower sections indicate rarity. This is particularly useful for detecting 'multimodal' data—distributions with more than one peak. For instance, if the violin has two distinct bulges, it suggests your dataset might contain two different subgroups of performers that should perhaps be analyzed separately. Action: If multimodal, consider segmenting your data before running regression or DEA.`, 
+                    id=>Plotly.newPlot(id, [{y:x2, type:'violin', side:'positive', line:{color:'#475569'}, fillcolor:'#ec4899', opacity:0.6}], {...commonLayout, yaxis:{title:v2}}, {responsive:true})
+                );
+                
+                addEDA('4. Q-Q Normality Plot', 'Statistics', 
+                    `This Q-Q (Quantile-Quantile) plot is a diagnostic tool to check if the data for <strong>${v1}</strong> follows a theoretical Normal distribution. The x-axis shows theoretical quantiles from a standard normal curve, and the y-axis shows your actual sample quantiles. If your data is perfectly normal, the points will form a straight line along the red diagonal. Curvature at the ends of the line indicates 'heavy tails' (more extreme values than expected) or skewness. Deviations are critical warnings for parametric tests (like t-tests or standard regressions) that assume normality, though DEA itself is non-parametric and less strictly bound by this assumption. Action: If significant deviation exists, use non-parametric tests or robust regression techniques.`, 
+                    id => {
+                        const sorted = [...x1].filter(v => typeof v === 'number').sort((a,b)=>a-b);
+                        const n = sorted.length;
+                        const theoretical = sorted.map((_,i) => ss.probit((i+0.5)/n));
+                        Plotly.newPlot(id, [{x:theoretical, y:sorted, mode:'markers', marker:{size:4, color:'#3b82f6'}}, {x:[Math.min(...theoretical), Math.max(...theoretical)], y:[Math.min(...sorted), Math.max(...sorted)], mode:'lines', line:{color:'red', dash:'dash'}}], {...commonLayout, xaxis:{title:'Theoretical Quantiles'}, yaxis:{title:'Sample Quantiles'}}, {responsive:true});
+                    }
+                );
+                
+                addEDA('5. Empirical CDF', 'Statistics', 
+                    `The Empirical Cumulative Distribution Function (CDF) chart plots the cumulative probability associated with <strong>${v1}</strong>. It answers the question: "What percentage of my data is less than or equal to value X?" The y-axis ranges from 0 to 1 (0% to 100%). A steep vertical rise in the curve indicates a range where many data points are clustered together. A flat line indicates a gap where no data exists. Unlike histograms, which depend on bin size, the CDF shows every data point and is excellent for comparing the distributions of two different variables or groups to see if one 'stochastically dominates' the other. Action: Use this to determine percentile thresholds (e.g., top 10% cutoff) for performance categorization.`, 
+                    id => {
+                        const sorted = [...x1].sort((a,b)=>a-b);
+                        const y = sorted.map((_,i)=>(i+1)/sorted.length);
+                        Plotly.newPlot(id, [{x:sorted, y:y, mode:'lines', line:{shape:'hv', color:'#0f172a', width:2}}], {...commonLayout, xaxis:{title:v1}, yaxis:{title:'Probability'}}, {responsive:true});
+                    }
+                );
+                
+                addEDA('6. Bivariate Scatter', 'Relationship', 
+                    `This scatter plot visualizes the relationship between <strong>${v1}</strong> (x-axis) and <strong>${v2}</strong> (y-axis). It is the most direct way to observe correlation. If the points cluster along a line moving upwards from left to right, there is a positive correlation. If they move downwards, it is negative. A random cloud implies no relationship. In DEA, you typically look for positive correlations between inputs and outputs. If you see inputs that do not correlate with outputs, it questions whether that input is actually relevant to the production process you are modeling. Action: Confirm that Inputs are positively correlated with Outputs; otherwise, reconsider variable selection.`, 
+                    id=>Plotly.newPlot(id, [{x:x1, y:x2, mode:'markers', marker:{color:'#10b981', opacity:0.6, size:8}}], {...commonLayout, xaxis:{title:v1}, yaxis:{title:v2}}, {responsive:true})
+                );
+                
+                addEDA('7. Density Heatmap', 'Relationship', 
+                    `When you have large datasets, simple scatter plots suffer from 'overplotting', where points stack on top of each other, obscuring the true density of data. This Density Heatmap solves that by binning the space for <strong>${v1}</strong> vs <strong>${v2}</strong> into 2D squares and coloring them based on the count of points. Bright yellow/green areas represent 'hotspots' where the most DMUs are concentrated. This helps you identify the 'typical' operating mode of your units versus the outliers that exist in the low-density, darker regions of the chart. Action: Focus improvement efforts on the high-density regions to have the biggest systemic impact.`, 
+                    id=>Plotly.newPlot(id, [{x:x1, y:x2, type:'histogram2d', colorscale:'Viridis'}], {...commonLayout, xaxis:{title:v1}, yaxis:{title:v2}}, {responsive:true})
+                );
+                
+                addEDA('8. Contour Plot', 'Relationship', 
+                    `This plot provides a topographic map of your data's density for variables <strong>${v1}</strong> and <strong>${v2}</strong>. The concentric lines (contours) connect points of equal data density, similar to elevation lines on a map. The center of the innermost ring represents the 'peak' or mode—the most common combination of values in your dataset. Multiple separate peaks would indicate distinct clusters or sub-populations. This visualization is excellent for understanding the shape and spread of the joint distribution without the noise of individual data points. Action: Use to detect if your data forms a single coherent group or multiple distinct operational clusters.`, 
+                    id=>Plotly.newPlot(id, [{x:x1, y:x2, type:'histogram2dcontour', colorscale:'Hot'}], {...commonLayout, xaxis:{title:v1}, yaxis:{title:v2}}, {responsive:true})
+                );
+                
+                addEDA('9. 3D Scatter Explorer', 'Multivariate', 
+                    `This 3D scatter plot adds a third dimension, <strong>${v3}</strong>, to the analysis of <strong>${v1}</strong> and <strong>${v2}</strong>. In complex systems like DEA, performance is rarely driven by just two factors. By rotating this cube, you can find viewing angles that reveal planes or clusters not visible in 2D. For example, you might see that while X and Y look uncorrelated, they form a clear pattern when Z is accounted for. This is a powerful tool for detecting multivariate outliers—points that look normal in one dimension but are extreme when the combination of three variables is considered. Action: Rotate to find hidden planes of correlation or isolated outliers in the 3D space.`, 
+                    id=>Plotly.newPlot(id, [{x:x1, y:x2, z:x3, mode:'markers', type:'scatter3d', marker:{size:4, color:'#f43f5e', opacity:0.8}}], {margin:{t:0,b:0,l:0,r:0}, scene:{xaxis:{title:v1}, yaxis:{title:v2}, zaxis:{title:v3}}}, {responsive:true})
+                );
+                
+                addEDA('10. Bubble Chart', 'Multivariate', 
+                    `This Bubble Chart enhances a standard 2D scatter plot of <strong>${v1}</strong> vs <strong>${v2}</strong> by mapping the third variable, <strong>${v3}</strong>, to the size of the markers. Larger bubbles represent higher values of Z. This allows you to visually test hypotheses about scale. For instance, do the largest entities (big bubbles) follow a different trend line than smaller ones? In efficiency analysis, this often reveals 'economies of scale', where larger units might cluster in a more efficient region of the chart than smaller ones. Action: Check if bubble size (Variable Z) systematically changes along the X or Y axes, indicating a scale effect.`, 
+                    id=>Plotly.newPlot(id, [{x:x1, y:x2, mode:'markers', marker:{size:x3.map(v=>Math.sqrt(Math.abs(v))), sizemode:'area', sizeref:0.2, color:x3, showscale:true, colorscale:'Bluered'}}], {...commonLayout, xaxis:{title:v1}, yaxis:{title:v2}}, {responsive:true})
+                );
+                
+                addEDA('11. Scatter Matrix (SPLOM)', 'Multivariate', 
+                    `The Scatter Plot Matrix (SPLOM) is a comprehensive grid that displays pairwise relationships between the first four variables in your dataset. The diagonal cells typically show the histogram of a single variable, while the off-diagonal cells show scatter plots of every variable pair. This gives you a 'bird's eye view' of the entire dataset's structure instantly. You can quickly scan for linear correlations (diagonal clouds), non-linear patterns (curves), or outliers that appear in multiple dimensions. It is the fastest way to sanity-check the relationships between all your inputs and outputs at once. Action: Scan for any plots showing a clear line (strong correlation) or random clouds (no correlation).`, 
+                    id => {
+                        const dim = numericHeaders.slice(0,4).map(k=>({label:k, values:rawData.map(r=>r[k])}));
+                        Plotly.newPlot(id, [{type:'splom', dimensions:dim, marker:{size:3, color:'#6366f1', line:{color:'white',width:0.5}}}], {margin:{t:30,l:50,b:50,r:20}}, {responsive:true});
+                    }
+                );
+                
+                addEDA('12. Correlation Network', 'Relationship', 
+                    `This Network Graph abstracts the relationships in your data. Variables are represented as nodes (circles), and a line (edge) is drawn between them only if their absolute correlation exceeds 0.5. Clusters of connected nodes indicate groups of variables that move together and essentially carry redundant information. If you have a cluster of 5 inputs that are all interconnected, you might be able to simplify your DEA model by removing some of them without losing information (dimensionality reduction). Isolated nodes indicate variables that are independent of the rest of the system. Action: Identify clusters of highly connected variables to consider for dimensionality reduction in your DEA model.`, 
+                    id => {
+                        const nodesX=[], nodesY=[], labels=[]; 
+                        const n = numericHeaders.length; 
+                        numericHeaders.forEach((h, i) => { 
+                            const angle = (i/n)*2*Math.PI; 
+                            nodesX.push(Math.cos(angle)); 
+                            nodesY.push(Math.sin(angle)); 
+                            labels.push(h); 
+                        }); 
+                        const edgesX=[], edgesY=[]; 
+                        for(let i=0; i<n; i++) { 
+                            for(let j=i+1; j<n; j++) { 
+                                const c = ss.sampleCorrelation(rawData.map(r=>r[numericHeaders[i]]), rawData.map(r=>r[numericHeaders[j]])); 
+                                if(Math.abs(c)>0.5) { 
+                                    edgesX.push(nodesX[i], nodesX[j], null); 
+                                    edgesY.push(nodesY[i], nodesY[j], null); 
+                                } 
+                            } 
+                        } 
+                        Plotly.newPlot(id, [{x:edgesX, y:edgesY, mode:'lines', line:{color:'#94a3b8', width:1}, hoverinfo:'none'}, {x:nodesX, y:nodesY, mode:'markers+text', text:labels, textposition:'top center', marker:{size:20, color:'#f59e0b', line:{color:'white',width:2}}}], {...commonLayout, xaxis:{showgrid:false, zeroline:false, showticklabels:false}, yaxis:{showgrid:false, zeroline:false, showticklabels:false}}, {responsive:true});
+                    }
+                );
+                
+                addEDA('13. Variance Analysis', 'Statistics', 
+                    `This bar chart displays the normalized variance for each variable in your dataset. Variance measures how spread out the data is. To make them comparable, variances are scaled relative to the maximum variance observed. High bars indicate variables with a wide range of values, which often drive the differentiation between efficient and inefficient units in DEA. Extremely low bars suggest variables that are nearly constant; such 'static' variables add little value to a discriminatory model and might be candidates for removal or consolidation. Action: Review low-variance variables; if a variable doesn't vary, it can't explain performance differences.`, 
+                    id=>{ const vars = numericHeaders.map(h => ss.variance(rawData.map(r=>r[h]))); const max = Math.max(...vars); Plotly.newPlot(id, [{x:numericHeaders, y:vars.map(v=>v/max), type:'bar', marker:{color:'#14b8a6'}}], {...commonLayout, yaxis:{title:'Norm. Variance'}}, {responsive:true}); }
+                );
+                
+                addEDA('14. Skewness Analysis', 'Statistics', 
+                    `This chart quantifies the asymmetry of each variable's distribution. A value of 0 implies perfect symmetry (like a Normal curve). Positive bars (Red) indicate 'Right Skew', meaning a long tail of high values (e.g., income distributions). Negative bars (Blue) indicate 'Left Skew', meaning a long tail of low values. In DEA, heavily skewed inputs can sometimes cause a few 'outlier' units to define the efficient frontier, making the scores for everyone else artificially low. Identifying high skewness suggests you might need to log-transform that variable. Action: For variables with skewness > 1 or < -1, consider applying a Log transformation to normalize the data.`, 
+                    id=>{ const skews = numericHeaders.map(h => ss.sampleSkewness(rawData.map(r=>r[h]))); Plotly.newPlot(id, [{x:numericHeaders, y:skews, type:'bar', marker:{color:skews.map(s=>s>0?'#ef4444':'#3b82f6')}}], {...commonLayout, yaxis:{title:'Skewness'}}, {responsive:true}); }
+                );
+                
+                addEDA('15. Kurtosis Analysis', 'Statistics', 
+                    `Kurtosis measures the 'tailedness' of a distribution. This chart highlights variables with high kurtosis (tall bars), which indicates 'heavy tails' or a high frequency of extreme outliers compared to a normal distribution. Low kurtosis indicates 'light tails' or a very flat distribution. For DEA, high kurtosis is a warning sign. It means your data contains frequent extreme values that could dominate the linear programming solution. Variables with high kurtosis should be inspected manually to ensure the outliers are valid data points and not measurement errors. Action: Verify data quality for any variable with extremely high kurtosis to prevent outliers from warping the frontier.`, 
+                    id=>{ const kurts = numericHeaders.map(h => ss.sampleKurtosis(rawData.map(r=>r[h]))); Plotly.newPlot(id, [{x:numericHeaders, y:kurts, type:'bar', marker:{color:'#8b5cf6'}}], {...commonLayout, yaxis:{title:'Kurtosis'}}, {responsive:true}); }
+                );
+                
+                addEDA('16. Outlier Z-Scores', 'Statistics', 
+                    `This chart automatically flags potential outliers by calculating the maximum Z-Score for each variable. The Z-Score tells you how many standard deviations a data point is from the mean. A common rule of thumb is that any value with a Z-Score greater than 3 (indicated by the red dotted line) is an outlier. Variables with red bars have at least one extreme value that exceeds this threshold. These specific data points should be verified for accuracy, as a single erroneous outlier can warp the entire efficiency frontier in a DEA model. Action: Check the raw data for variables exceeding the Z=3 threshold; consider removing or capping these extreme values.`, 
+                    id => {
+                        const maxZ = numericHeaders.map(h => {
+                            const vals = rawData.map(r=>r[h]);
+                            const m = ss.mean(vals);
+                            const s = ss.standardDeviation(vals);
+                            return Math.max(...vals.map(v => Math.abs((v-m)/s)));
+                        });
+                        Plotly.newPlot(id, [{x:numericHeaders, y:maxZ, type:'bar', marker:{color:maxZ.map(z=>z>3?'#ef4444':'#22c55e')}}], {...commonLayout, shapes:[{type:'line', x0:-0.5, x1:numericHeaders.length-0.5, y0:3, y1:3, line:{dash:'dot', color:'red'}}], yaxis:{title:'Max Z-Score'}}, {responsive:true});
+                    }
+                );
+                
+                addEDA('17. Strip Plot', 'Distribution', 
+                    `The Strip Plot displays the raw data points for <strong>${v1}</strong> in a single dimension, with a small amount of random 'jitter' added to the vertical position to prevent points from overlapping. Unlike summary charts (box/violin), this shows you the actual sample size and the precise gaps in the data. It is excellent for small-to-medium datasets where you want to see if the data is sparse or dense in certain regions. It reveals the granular 'texture' of the data that smoothed density plots might hide. Action: Use this to see if you have enough data density in specific ranges to support robust statistical inference.`, 
+                    id=>Plotly.newPlot(id, [{y:x1, type:'box', boxpoints:'all', jitter:0.5, pointpos:0, fillcolor:'rgba(0,0,0,0)', line:{color:'rgba(0,0,0,0)'}, marker:{color:'#db2777', size:5, opacity:0.6}}], {...commonLayout, yaxis:{title:v1}}, {responsive:true})
+                );
+                
+                addEDA('18. Rug Plot', 'Relationship', 
+                    `This chart combines a standard scatter plot of <strong>${v1}</strong> vs <strong>${v2}</strong> with 'marginal ticks' (the rug) along the axes. Each tick mark represents the position of a single data point on that axis. This allows you to visualize the 1D marginal distribution of each variable simultaneously with their 2D joint relationship. You can quickly see if the x-variable is clustered or uniform, independent of its relationship with y. It adds a layer of density information to the correlation analysis without cluttering the chart. Action: Look at the 'rugs' on the axes to see if gaps in the 2D scatter are due to lack of data in one specific variable.`, 
+                    id=>Plotly.newPlot(id, [{x:x1, y:x2, mode:'markers', marker:{color:'#9333ea', opacity:0.5}}, {x:x1, y:x1.map(()=>Math.min(...x2)), mode:'markers', marker:{symbol:'line-ns-open', color:'black'}}, {y:x2, x:x2.map(()=>Math.min(...x1)), mode:'markers', marker:{symbol:'line-ew-open', color:'black'}}], {...commonLayout, xaxis:{title:v1}, yaxis:{title:v2}}, {responsive:true})
+                );
+                
+                addEDA('19. Lag Plot', 'Statistics', 
+                    `This Lag Plot checks for randomness and autocorrelation. It plots the value of <strong>${v1}</strong> at row 't' (x-axis) against its value at row 't+1' (y-axis). If your data is truly random (independent and identically distributed), this plot should look like a structureless cloud. However, if the points form a diagonal line or distinct loops, it implies that the order of rows matters—meaning there is serial correlation (e.g., time series data). In standard DEA, we assume DMUs are independent; significant patterns here might suggest you need a Window Analysis or Malmquist Index approach instead. Action: If a clear pattern exists, do not treat the data as independent; consider time-series DEA methods.`, 
+                    id=>Plotly.newPlot(id, [{x:x1.slice(0,-1), y:x1.slice(1), mode:'markers', marker:{color:'#0d9488'}}], {...commonLayout, xaxis:{title:'t'}, yaxis:{title:'t+1'}}, {responsive:true})
+                );
+                
+                addEDA('20. Radar Means', 'Multivariate', 
+                    `This Radar Chart (or Spider Plot) visualizes the 'average profile' of your dataset. It takes the mean value of the first five variables, scales them relative to their maximums (0-100%), and plots them on radial axes. The resulting polygon represents the shape of the 'typical' unit in your data. A shape that is skewed heavily to one side indicates that the dataset is dominated by values in that variable. This is a quick way to compare the relative magnitudes of different variables that might be measured on vastly different scales (e.g., dollars vs employee counts). Action: Use this to understand the 'average' unit's profile and ensure no single variable is disproportionately dominating the scale.`, 
+                    id=>{ const vars = numericHeaders.slice(0,5); const means = vars.map(h => ss.mean(rawData.map(r=>r[h]))); const maxs = vars.map(h => Math.max(...rawData.map(r=>r[h]))); const norm = means.map((m, i) => (maxs[i] === 0 ? 0 : (m/maxs[i])*100)); Plotly.newPlot(id, [{type:'scatterpolar', r:[...norm, norm[0]], theta:[...vars, vars[0]], fill:'toself', fillcolor:'rgba(99, 102, 241, 0.5)', line:{color:'#4f46e5'}}], {polar:{radialaxis:{visible:true, range:[0,100]}}, margin:{t:30, b:30}}, {responsive:true}); }
+                );
+                
+                addEDA('21. 3D Topographic Mesh', '3D Topography', 
+                    `This chart visualizes the interaction between <strong>${v1}</strong>, <strong>${v2}</strong>, and <strong>${v3}</strong> as a continuous surface mesh. By creating a triangulated landscape from your data points, it reveals the overall topology of your dataset. Peaks represent high values of Z, while valleys represent low values. This is far more effective than a scatter plot for identifying 'gradients' or continuous trends across the three dimensions. In efficiency analysis, this helps visualize the production surface—showing how output (Z) scales non-linearly with changes in multiple inputs (X and Y). Action: Identify ridges or peaks in the mesh to understand where maximum output is achieved relative to inputs.`, 
+                    id => Plotly.newPlot(id, [{x: x1, y: x2, z: x3, type: 'mesh3d', opacity: 0.8, color: '#6366f1', flatshading: true}], {margin:{t:0,b:0,l:0,r:0}, scene:{xaxis:{title:v1}, yaxis:{title:v2}, zaxis:{title:v3}}}, {responsive:true})
+                );
+                
+                addEDA('22. 3D Drop-Line Scatter', '3D Spatial', 
+                    `This enhanced 3D scatter plot solves a common problem in 3D visualization: depth perception. By drawing a thin 'drop line' from each point down to the x-y plane (the floor), it clearly anchors the data in space. This allows you to verify exactly where a point lies on the <strong>${v1}</strong>-<strong>${v2}</strong> grid, regardless of its height (<strong>${v3}</strong>). It is particularly useful for spotting outliers that may appear to be part of a cluster in a 2D view but are actually floating high above or far below the main group in the third dimension. Action: Use the drop lines to precisely locate the X-Y coordinates of high-Z outliers.`, 
+                    id => { 
+                        const traces = []; 
+                        traces.push({ x:x1, y:x2, z:x3, mode:'markers', marker:{size:4, color:x3, colorscale:'Viridis'}, type:'scatter3d' }); 
+                        x1.forEach((x, i) => { 
+                            traces.push({ x:[x,x], y:[x2[i],x2[i]], z:[Math.min(...x3), x3[i]], mode:'lines', line:{color:'gray', width:1}, type:'scatter3d', showlegend:false, hoverinfo:'none' }); 
+                        }); 
+                        Plotly.newPlot(id, traces, {margin:{t:0,b:0,l:0,r:0}, showlegend:false, scene:{xaxis:{title:v1}, yaxis:{title:v2}, zaxis:{title:v3}}}, {responsive:true}); 
+                    }
+                );
+                
+                addEDA('23. 3D Ribbon Trend', '3D Trajectory', 
+                    `This plot connects your data points with a 3D line (ribbon) based on their sorted order (sorted by <strong>${v1}</strong>). This visualization is powerful for identifying trajectories or evolution paths within the data. Ideally, if there is a strong relationship, the ribbon should flow smoothly through space. If the ribbon is jagged or chaotic, it indicates high volatility or a lack of correlation between the variables. In benchmarking, this can visualize the 'path of growth'—showing how units typically evolve as they scale up from small (low X) to large entities. Action: Trace the ribbon to see if growth (increasing X) leads to a smooth or chaotic progression in Y and Z.`, 
+                    id => { 
+                        const combined = x1.map((x, i) => ({x, y:x2[i], z:x3[i]})).sort((a,b) => a.x - b.x); 
+                        Plotly.newPlot(id, [{x: combined.map(d=>d.x), y: combined.map(d=>d.y), z: combined.map(d=>d.z), type: 'scatter3d', mode: 'lines+markers', line: {width: 6, color: combined.map(d=>d.z), colorscale: 'Plasma'}, marker: {size: 3}}], {margin:{t:0,b:0,l:0,r:0}, scene:{xaxis:{title:v1}, yaxis:{title:v2}, zaxis:{title:v3}}}, {responsive:true}); 
+                    }
+                );
+                
+                addEDA('24. 3D Binned Histogram', '3D Density', 
+                    `This chart takes the concept of a 2D heatmap and extrudes it into 3D. It divides the <strong>${v1}</strong>-<strong>${v2}</strong> plane into a grid and counts the number of data points in each cell. These counts are then displayed as 3D bars. The height of the bar represents the density of data in that region. This is excellent for visualizing 'clusters' in a physical way. Unlike a smooth contour plot, this discrete view shows the raw concentration of your DMUs, making it easy to identify the 'dominant' operating modes or the most common combinations of inputs/outputs in your industry. Action: Identify the tallest bars to find the most common 'modal' operating configurations in your dataset.`, 
+                    id => { 
+                        const binCount = 10; 
+                        const minX = Math.min(...x1), maxX = Math.max(...x1); 
+                        const minY = Math.min(...x2), maxY = Math.max(...x2); 
+                        let stepX = (maxX - minX) / binCount; 
+                        let stepY = (maxY - minY) / binCount; 
+                        if(stepX === 0) stepX = 1; 
+                        if(stepY === 0) stepY = 1; 
+                        const z = Array(binCount).fill(0).map(() => Array(binCount).fill(0)); 
+                        for(let i=0; i<x1.length; i++) { 
+                            let idxX = Math.floor((x1[i] - minX) / stepX); 
+                            let idxY = Math.floor((x2[i] - minY) / stepY); 
+                            if(idxX >= binCount) idxX = binCount - 1; 
+                            if(idxY >= binCount) idxY = binCount - 1; 
+                            z[idxY][idxX]++; 
+                        } 
+                        Plotly.newPlot(id, [{z: z, type: 'surface', colorscale: 'Blues', showscale:false}], {margin:{t:0,b:0,l:0,r:0}, scene:{xaxis:{title:v1}, yaxis:{title:v2}, zaxis:{title:'Frequency'}}}, {responsive:true}); 
+                    }
+                );
+
+            } catch(e) { console.error("EDA Error:", e); }
+        }
+
+        // --- 3. REGRESSION LOGIC ---
+        function runRegression() {
+            try {
+                if (typeof ss === 'undefined') return;
+                const xCol = document.getElementById('reg-x').value;
+                const yCol = document.getElementById('reg-y').value;
+                const x = rawData.map(r => r[xCol]);
+                const y = rawData.map(r => r[yCol]);
+                
+                if (x.length < 3) { alert("Insufficient data points for regression."); return; }
+
+                const n = x.length;
+                const xMean = ss.mean(x);
+                const yMean = ss.mean(y);
+                const dataPts = x.map((xv, i) => [xv, y[i]]);
+                
+                const lr = ss.linearRegression(dataPts);
+                const line = ss.linearRegressionLine(lr);
+                const r2 = ss.rSquared(dataPts, line);
+                
+                const predicted = x.map(xv => line(xv));
+                const residuals = y.map((yv, i) => yv - predicted[i]);
+                const ssRes = residuals.reduce((sum, r) => sum + r*r, 0);
+                const mse = ssRes / (n - 2); 
+                const sxx = x.reduce((sum, xv) => sum + Math.pow(xv - xMean, 2), 0);
+                
+                if (sxx === 0) { alert("X variable has zero variance. Cannot compute regression diagnostics."); return; }
+
+                const leverage = x.map(xv => (1/n) + (Math.pow(xv - xMean, 2) / sxx));
+                const stdResiduals = residuals.map((r, i) => {
+                    const lev = leverage[i];
+                    if (lev > 0.999) return 0;
+                    return r / Math.sqrt(mse * (1 - lev));
+                });
+                const cooksD = residuals.map((r, i) => {
+                    const h = leverage[i];
+                    if (h > 0.999) return 0;
+                    const rStd = stdResiduals[i];
+                    return (Math.pow(rStd, 2) / 2) * (h / (1 - h));
+                });
+
+                document.getElementById('reg-results').classList.remove('hidden');
+                document.getElementById('reg-r2').innerText = r2.toFixed(4);
+                document.getElementById('reg-slope').innerText = lr.m.toFixed(4);
+                document.getElementById('reg-intercept').innerText = lr.b.toFixed(4);
+                document.getElementById('reg-eq').innerText = `y = ${lr.m.toFixed(4)}x + ${lr.b.toFixed(4)}`;
+
+                const commonLayout = { margin:{t:30,l:50,r:20,b:50}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{family:'Inter'} };
+
+                const xMin = Math.min(...x), xMax = Math.max(...x);
+                Plotly.newPlot('reg-chart', [
+                    { x: x, y: y, mode: 'markers', type: 'scatter', name: 'Observed', marker: {color: '#4f46e5', size: 10, opacity: 0.6} },
+                    { x: [xMin, xMax], y: [line(xMin), line(xMax)], mode: 'lines', type: 'scatter', name: 'Fit', line: {color: '#1e293b', width: 4} }
+                ], { title: `${yCol} vs ${xCol}`, xaxis: {title: xCol, gridcolor: '#e2e8f0'}, yaxis: {title: yCol, gridcolor: '#e2e8f0'}, plot_bgcolor: 'white', paper_bgcolor: 'white', margin: {t:50, b:50, l:60, r:20}, showlegend: true }, {responsive: true});
+
+                const gallery = document.getElementById('reg-gallery');
+                gallery.innerHTML = ''; 
+
+                const addRegChart = (title, tag, desc, plotFn) => {
+                    const div = document.createElement('div');
+                    div.className = 'chart-card';
+                    let tagClass = 'tag-stat';
+                    if(tag.includes('3D')) tagClass = 'tag-3d';
+                    
+                    div.innerHTML = `
+                        <div class="chart-header"><h4 class="font-bold text-slate-800">${title}</h4><span class="chart-tag ${tagClass}">${tag}</span></div>
+                        <div id="reg-fig-${gallery.children.length}" class="flex-grow"></div>
+                        <div class="analysis-box"><strong>Analysis:</strong> ${desc}</div>
+                    `;
+                    gallery.appendChild(div);
+                    try { plotFn(`reg-fig-${gallery.children.length-1}`); } catch(e){ console.warn("Reg chart failed", e); }
+                };
+
+                addRegChart('Figure 2: Residuals vs Fitted', 'Diagnostic', 
+                    `This plot is the primary check for the linearity assumption in regression. It plots the Residuals (Errors) on the Y-axis against the Fitted (Predicted) values on the X-axis. Ideally, you want to see a random scattering of points around the horizontal zero line, looking like a "starry night". If you see a U-shape (parabola), it indicates non-linearity, meaning a linear model is insufficient and you should try polynomial terms. If you see a funnel shape (fanning out), it indicates heteroscedasticity (unequal variance), meaning predictions are less accurate at higher values. Action: Check for U-shapes or Funnels; if present, switch to non-linear models or Weighted Least Squares.`, 
+                    id => Plotly.newPlot(id, [{x: predicted, y: residuals, mode: 'markers', marker: {color: '#ef4444', size: 8, opacity:0.7}}, {x: [Math.min(...predicted), Math.max(...predicted)], y: [0, 0], mode: 'lines', line: {color: 'black', dash: 'dash'}}], {...commonLayout, xaxis:{title:'Fitted Values'}, yaxis:{title:'Residuals'}}, {responsive:true})
+                );
+                
+                addRegChart('Figure 3: Normal Q-Q Plot', 'Diagnostic', 
+                    `This Q-Q Plot checks if the residuals (errors) are normally distributed, which is a key assumption for calculating confidence intervals and p-values. The points plotted are the quantiles of your residuals versus the theoretical quantiles of a standard normal distribution. If the errors are normal, the blue dots will lie perfectly on the red 45-degree dashed line. Deviations at the ends (tails) indicate that your model has "fat tails"—meaning it produces more extreme errors than a normal model would expect. Significant deviation suggests that t-tests and F-tests for your model might be invalid. Action: If tails deviate significantly, use robust standard errors or bootstrapping for inference.`, 
+                    id => { const sortedRes = [...stdResiduals].sort((a,b)=>a-b); const theoretical = sortedRes.map((_,i) => ss.probit((i+0.5)/n)); Plotly.newPlot(id, [{x: theoretical, y: sortedRes, mode: 'markers', marker:{color:'#3b82f6', size:6}}, {x: [Math.min(...theoretical), Math.max(...theoretical)], y: [Math.min(...theoretical), Math.max(...theoretical)], mode: 'lines', line:{color:'red', dash:'dash'}}], {...commonLayout, xaxis:{title:'Theoretical Quantiles'}, yaxis:{title:'Standardized Residuals'}}, {responsive:true}); }
+                );
+                
+                addRegChart('Figure 4: Residual Distribution', 'Diagnostic', 
+                    `This histogram displays the frequency distribution of the residuals. It complements the Q-Q plot by giving a quick visual check for normality. You are looking for a symmetric, bell-shaped curve centered at zero. If the histogram is skewed (leaning to one side), it means your model is biased—it systematically over-predicts or under-predicts for certain ranges. If it is bimodal (has two peaks), it suggests there is a hidden categorical variable you haven't included in your model that is splitting the data into two groups. Action: Ensure the peak is at zero; if bimodal, find the missing categorical grouping variable.`, 
+                    id => Plotly.newPlot(id, [{x: residuals, type: 'histogram', marker:{color:'#8b5cf6', line:{color:'white', width:1}}}], {...commonLayout, xaxis:{title:'Residuals'}, yaxis:{title:'Frequency'}}, {responsive:true})
+                );
+                
+                addRegChart('Figure 5: Observed vs Predicted', 'Performance', 
+                    `This chart compares the Actual values (Y-axis) against the Predicted values (X-axis) from your model. The grey dashed diagonal line represents "Perfect Prediction" (where Y = Predicted). The closer the green points are to this diagonal line, the better your model is performing. Points far from the line are large errors. If you see the points curving away from the line at high or low values, it indicates that your model stops working well at the extremes of the data range. This is often used to visually estimate R-squared: a tight cigar shape means high R-squared; a round cloud means low R-squared. Action: Use this to visually validate model accuracy; points far from the line are specific cases the model failed to predict.`, 
+                    id => Plotly.newPlot(id, [{x: predicted, y: y, mode: 'markers', marker:{color:'#10b981', size:8, opacity:0.6}}, {x: [Math.min(...y), Math.max(...y)], y: [Math.min(...y), Math.max(...y)], mode: 'lines', line:{color:'gray', dash:'dot'}}], {...commonLayout, xaxis:{title:'Predicted Values'}, yaxis:{title:'Observed Values'}}, {responsive:true})
+                );
+                
+                addRegChart('Figure 6: Cook\'s Distance', 'Influence', 
+                    `Cook's Distance measures the influence of each individual data point on the regression coefficients. A tall bar means that removing that specific row would significantly change the slope or intercept of your model. The red dashed line represents a common threshold (4/n). Bars crossing this line are highly influential points. These are often outliers in the X-direction (high leverage) that also have large residuals. While not always "wrong", these points deserve special attention because your entire model might depend on just one or two of them. Action: Re-run the model without these high-influence points to see if the results change drastically; if so, report both models.`, 
+                    id => Plotly.newPlot(id, [{x: x.map((_,i)=>i), y: cooksD, type: 'bar', marker:{color: cooksD.map(d => d > 4/n ? '#ef4444' : '#64748b')}}], {...commonLayout, xaxis:{title:'Observation Index'}, yaxis:{title:'Cook\'s Distance'}, shapes: [{type:'line', x0:0, x1:n, y0:4/n, y1:4/n, line:{dash:'dot', color:'red'}}]}, {responsive:true})
+                );
+                
+                addRegChart('Figure 7: Scale-Location', 'Diagnostic', 
+                    `The Scale-Location (or Spread-Location) plot checks for homoscedasticity—the assumption that the variance of errors is constant across all values. It plots the square root of the standardized residuals against fitted values. Ideally, you should see a horizontal band with points randomly spread. If you see a steep upward slope, it means the variation (error) increases as the predicted value increases—a common phenomenon in financial data (e.g., larger companies have larger variances in profit). This violates regression assumptions and invalidates standard error calculations. Action: If a trend exists, apply a Log or Square Root transformation to the dependent variable Y.`, 
+                    id => Plotly.newPlot(id, [{x: predicted, y: stdResiduals.map(r => Math.sqrt(Math.abs(r))), mode: 'markers', marker:{color:'#f59e0b', size:8}}], {...commonLayout, xaxis:{title:'Fitted Values'}, yaxis:{title:'√|Standardized Residuals|'}}, {responsive:true})
+                );
+                
+                addRegChart('Figure 8: Residuals vs X', 'Diagnostic', 
+                    `This plot checks if the residuals are correlated with the Independent Variable (X). In a good model, the residuals should be independent of X, appearing as a random cloud around zero. If you see a pattern (like a line or curve), it means there is still information in X that the model hasn't captured—likely a non-linear relationship (e.g., X^2). If the cloud gets wider as X increases, it confirms heteroscedasticity related specifically to this variable. This is a direct diagnostic for whether your specific regressor X needs transformation. Action: If a curve is visible, add a polynomial term (X^2) to your regression equation.`, 
+                    id => Plotly.newPlot(id, [{x: x, y: residuals, mode: 'markers', marker:{color:'#06b6d4', size:8}}, {x: [xMin, xMax], y: [0, 0], mode: 'lines', line:{color:'black', dash:'dash'}}], {...commonLayout, xaxis:{title: xCol}, yaxis:{title:'Residuals'}}, {responsive:true})
+                );
+                
+                addRegChart('Figure 9: 3D Residual Landscape', '3D Diagnostic', 
+                    `This 3D plot creates a "landscape of error" by plotting the Independent Variable (X), Dependent Variable (Y), and the Residuals (Z) simultaneously. In a perfect model, all points would lie on the Z=0 plane (the flat floor). Points floating high above or sinking deep below this floor represent large errors. By rotating this cube, you can see if the errors cluster in specific regions of the X-Y space—for example, if high-value inputs (High X) consistently produce large positive errors (High Z). This spatial view makes it easier to spot "pockets" of poor model performance that 2D plots might hide. Action: Rotate the chart to find specific regions of the X-Y plane where the model systematically fails.`, 
+                    id => Plotly.newPlot(id, [{ x: x, y: y, z: residuals, type: 'scatter3d', mode: 'markers', marker: {size: 5, color: residuals, colorscale: 'RdBu', showscale: true} }, { type: 'mesh3d', x: [xMin, xMin, xMax, xMax], y: [Math.min(...y), Math.max(...y), Math.max(...y), Math.min(...y)], z: [0,0,0,0], color: 'gray', opacity: 0.2 }], {margin:{t:0,b:0,l:0,r:0}, scene:{xaxis:{title:xCol}, yaxis:{title:yCol}, zaxis:{title:'Residuals'}}}, {responsive:true})
+                );
+                
+                addRegChart('Figure 10: 3D Model Evolution', '3D Temporal', 
+                    `This visualization adds a 'Time' or 'Index' dimension (Z-axis) to the standard regression view. The X and Y axes show your variables, while the vertical axis represents the row number (observation order). The blue line represents the regression fit extending through 'time'. This allows you to check for "drift"—does the relationship between X and Y change as you move up the Z-axis? Ideally, the data points (red markers) should be consistently scattered around the prediction line/plane throughout the entire vertical stack. If you see them drifting away at the top or bottom, your data may have a time-series component that this static model misses. Action: Check for vertical drift; if present, the relationship is not stable over time/index.`, 
+                    id => { 
+                        const indices = x.map((_,i)=>i); 
+                        Plotly.newPlot(id, [{ x: x, y: y, z: indices, type: 'scatter3d', mode: 'markers', marker: {size: 4, color: '#ef4444'} }, { x: x, y: predicted, z: indices, type: 'scatter3d', mode: 'lines', line: {width: 5, color: '#3b82f6'} }], {margin:{t:0,b:0,l:0,r:0}, scene:{xaxis:{title:xCol}, yaxis:{title:yCol}, zaxis:{title:'Row Index'}}}, {responsive:true}); 
+                    }
+                );
+                
+                addRegChart('Figure 11: 3D Prediction Error Cone', '3D Diagnostic', 
+                    `This chart visualizes the divergence between Observed values, Predicted values, and the Input variable (X). The X-axis is your input, Y is Observed, and Z is Predicted. The "Perfect Model" line would be a diagonal where Y=Z. The vertical lines (drop lines) connecting the points to this diagonal represent the error magnitude. This 3D view highlights "heteroscedasticity" visually—if the length of these drop lines increases as X increases (forming a cone shape opening outwards), it confirms that your model's prediction uncertainty grows with the scale of the input variable. Action: Look for the 'Cone of Uncertainty'; if errors grow with X, model reliability drops for larger entities.`, 
+                    id => { 
+                        const traces = []; 
+                        traces.push({x:x, y:y, z:predicted, mode:'markers', type:'scatter3d', marker:{size:4, color:residuals, colorscale:'Viridis'}}); 
+                        x.forEach((xv, i) => { 
+                            traces.push({x:[xv,xv], y:[y[i],y[i]], z:[predicted[i], y[i]], mode:'lines', type:'scatter3d', line:{color:'gray', width:1}, showlegend:false, hoverinfo:'none'}); 
+                        }); 
+                        Plotly.newPlot(id, traces, {margin:{t:0,b:0,l:0,r:0}, showlegend:false, scene:{xaxis:{title:xCol}, yaxis:{title:'Observed'}, zaxis:{title:'Predicted'}}}, {responsive:true}); 
+                    }
+                );
+                
+                addRegChart('Figure 12: 3D Influence Volume', '3D Influence', 
+                    `This plot combines three critical diagnostic metrics into a single 3D volume to identify the most dangerous data points. The axes are Leverage (potential to influence), Standardized Residuals (outlier status), and Cook's Distance (actual influence). Points that float in the top-right-back corner (high leverage, high residual, high Cook's D) are the "triple threats" of your dataset. These are the points that are both unusual in value and highly influential in bending your regression line. Identifying and potentially removing these specific points can often significantly improve your model's robustness and R-squared value. Action: Locate points in the top-right-back corner; these are your most problematic data points requiring audit.`, 
+                    id => Plotly.newPlot(id, [{ x: leverage, y: stdResiduals, z: cooksD, type: 'scatter3d', mode: 'markers', marker: {size: 8, color: cooksD, colorscale: 'Hot', showscale: true} }], {margin:{t:0,b:0,l:0,r:0}, scene:{xaxis:{title:'Leverage'}, yaxis:{title:'Std Residuals'}, zaxis:{title:"Cook's Distance"}}}, {responsive:true})
+                );
+            } catch(e) { console.error("Regression Error", e); }
+        }
+
+        // --- 4. DEA ENGINE (SIMPLEX) ---
+        function runDEA() {
+            try {
+                const config = {
+                    dmu: document.getElementById('dea-dmu').value,
+                    inputs: Array.from(document.getElementById('dea-inputs').selectedOptions).map(o => o.value),
+                    outputs: Array.from(document.getElementById('dea-outputs').selectedOptions).map(o => o.value),
+                    orient: document.getElementById('dea-orientation').value,
+                    rts: document.getElementById('dea-rts').value
+                };
+                currentDEAConfig = config;
+
+                if (config.inputs.length === 0 || config.outputs.length === 0) { alert("Select Inputs/Outputs"); return; }
+
+                const dmus = rawData.map(r => r[config.dmu]);
+                const inputData = rawData.map(r => config.inputs.map(k => r[k]));
+                const outputData = rawData.map(r => config.outputs.map(k => r[k]));
+                
+                deaResults = dmus.map((dmuName, k) => {
+                    const n = dmus.length, m = config.inputs.length, s = config.outputs.length;
+                    let A=[], B=[], C=[];
+
+                    if (config.orient === 'input') {
+                        C = [...Array(n).fill(0), -1]; 
+                        for(let i=0; i<m; i++) { A.push([...inputData.map(r => r[i]), -inputData[k][i]]); B.push(0); }
+                        for(let r=0; r<s; r++) { A.push([...outputData.map(row => -row[r]), 0]); B.push(-outputData[k][r]); }
+                        if(config.rts === 'vrs') { A.push([...Array(n).fill(1), 0]); B.push(1); A.push([...Array(n).fill(-1), 0]); B.push(-1); }
+                        const res = simplex(A, B, C);
+                        const theta = -res.z;
+                        const lambdas = res.solution.slice(0, n);
+                        
+                        const targetInputs = config.inputs.map((_, i) => inputData.reduce((sum, val, idx) => sum + lambdas[idx]*val[i], 0));
+                        const targetOutputs = config.outputs.map((_, r) => outputData.reduce((sum, val, idx) => sum + lambdas[idx]*val[r], 0));
+                        
+                        return {
+                            dmu: dmuName, score: theta, lambdas, targetInputs, targetOutputs,
+                            inSlacks: inputData[k].map((v, i) => (theta*v) - targetInputs[i]),
+                            outSlacks: targetOutputs.map((v, i) => v - outputData[k][i]),
+                            isEfficient: Math.abs(theta - 1) < 1e-4
+                        };
+                    } else {
+                        C = [...Array(n).fill(0), 1];
+                        for(let i=0; i<m; i++) { A.push([...inputData.map(r => r[i]), 0]); B.push(inputData[k][i]); }
+                        for(let r=0; r<s; r++) { A.push([...outputData.map(row => -row[r]), outputData[k][r]]); B.push(0); }
+                        if(config.rts === 'vrs') { A.push([...Array(n).fill(1), 0]); B.push(1); A.push([...Array(n).fill(-1), 0]); B.push(-1); }
+                        const res = simplex(A, B, C);
+                        const phi = res.z;
+                        const lambdas = res.solution.slice(0, n);
+                        return {
+                            dmu: dmuName, score: 1/phi, lambdas,
+                            targetInputs: config.inputs.map((_, i) => inputData.reduce((sum, val, idx) => sum + lambdas[idx]*val[i], 0)),
+                            targetOutputs: config.outputs.map((_, r) => outputData.reduce((sum, val, idx) => sum + lambdas[idx]*val[r], 0)),
+                            inSlacks: [], outSlacks: [],
+                            isEfficient: Math.abs((1/phi) - 1) < 1e-4
+                        };
+                    }
+                });
+
+                renderDEAResults(config);
+            } catch(e) { console.error("DEA Error", e); }
+        }
+
+        function simplex(A, B, C) {
+            const m = A.length, n = A[0].length;
+            const table = [];
+            for(let i=0; i<m; i++) table.push([...A[i], ...Array(m).fill(0).map((_,k)=>k===i?1:0), B[i]]);
+            table.push([...C.map(x=>-x), ...Array(m+1).fill(0)]);
+            const cols = table[0].length;
+            for(let iter=0; iter<1000; iter++) {
+                let pc = -1, minVal = -1e-9;
+                for(let j=0; j<cols-1; j++) if(table[m][j] < minVal) { minVal = table[m][j]; pc = j; }
+                if(pc === -1) break;
+                let pr = -1, minRatio = Infinity;
+                for(let i=0; i<m; i++) {
+                    if(table[i][pc] > 1e-9) {
+                        let ratio = table[i][cols-1] / table[i][pc];
+                        if(ratio < minRatio) { minRatio = ratio; pr = i; }
+                    }
+                }
+                if(pr === -1) break;
+                const pivot = table[pr][pc];
+                for(let j=0; j<cols; j++) table[pr][j] /= pivot;
+                for(let i=0; i<=m; i++) {
+                    if(i !== pr) {
+                        const f = table[i][pc];
+                        for(let j=0; j<cols; j++) table[i][j] -= f * table[pr][j];
+                    }
+                }
+            }
+            const solution = Array(n).fill(0);
+            for(let j=0; j<n; j++) {
+                let r = -1, basic = true;
+                for(let i=0; i<m; i++) {
+                    if(Math.abs(table[i][j]-1)<1e-6) { if(r===-1) r=i; else basic=false; }
+                    else if(Math.abs(table[i][j])>1e-6) basic=false;
+                }
+                if(basic && r!==-1) solution[j] = table[r][cols-1];
+            }
+            return { solution, z: table[m][cols-1] };
+        }
+
+        // --- 5. VISUALIZATION (DEA FIGURES) ---
+        function renderDEAResults(config) {
+            try {
+                document.getElementById('dea-results-area').classList.remove('hidden');
+                const container = document.getElementById('dea-figures-container');
+                container.innerHTML = ''; // Clear previous
+
+                const scores = deaResults.map(r => r.score);
+                const eff = deaResults.filter(r => r.isEfficient);
+                
+                // KPI Update
+                document.getElementById('res-mean').innerText = (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(4);
+                document.getElementById('res-count').innerText = `${eff.length} / ${scores.length}`;
+                document.getElementById('res-min').innerText = Math.min(...scores).toFixed(4);
+
+                // Auto-generate summary
+                generateSummaryReport(config, scores, eff);
+
+                const commonLayout = { margin:{t:20,l:40,r:20,b:40}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{family:'Inter'} };
+
+                const addChart = (id, title, pkg, desc, plotFn) => {
+                    const div = document.createElement('div');
+                    div.className = 'chart-card min-h-[500px]';
+                    let tagClass = 'tag-dist';
+                    if(pkg.includes('Network')) tagClass = 'tag-multi';
+                    if(pkg.includes('Rel')) tagClass = 'tag-rel';
+                    if(pkg.includes('3D')) tagClass = 'tag-3d';
+                    
+                    div.innerHTML = `
+                        <div class="chart-header">
+                            <h4 class="font-bold text-slate-800">${title}</h4><span class="chart-tag ${tagClass}">${pkg}</span>
+                        </div>
+                        <div id="${id}" class="flex-grow"></div>
+                        <div class="analysis-box"><strong>Analysis:</strong> ${desc}</div>
+                    `;
+                    container.appendChild(div);
+                    try { plotFn(); } catch(e){ console.warn("DEA chart fail", e); }
+                };
+
+                addChart('fig1', 'Figure 1: Efficiency Score Distribution', 'Distribution', 
+                    `This histogram illustrates the frequency distribution of efficiency scores across your entire dataset. The x-axis represents the efficiency score, typically ranging from 0 to 1, while the y-axis shows the number of Decision Making Units (DMUs) falling within each score range. A strong concentration of bars at the 1.0 mark indicates a high number of efficient units, suggesting a competitive environment where best practices are widely adopted. Conversely, a distribution that trails off to the left implies a wide variance in performance, highlighting that a significant portion of the population is operating inefficiently and has substantial room for improvement relative to the best performers. Action: If distribution is bimodal (two peaks), consider grouping data by size or region.`, 
+                    () => Plotly.newPlot('fig1', [{ x: scores, type: 'histogram', marker: {color: '#6366f1', line:{color:'white', width:1}}}], {...commonLayout}, {responsive:true})
+                );
+                
+                addChart('fig2', 'Figure 2: Empirical CDF', 'Statistics', 
+                    `The Empirical Cumulative Distribution Function (CDF) visualizes the probability that a randomly selected DMU will have an efficiency score less than or equal to a specific value. The y-axis represents the cumulative probability (from 0 to 1), and the x-axis shows the efficiency scores. A steep vertical rise in the curve indicates a cluster of DMUs with similar performance levels. For example, if the curve rises sharply at 0.8, it means a large portion of your dataset is stuck at 80% efficiency. The flat line at the top right represents the efficient frontier units (score of 1.0). Comparing this curve across different years or groups can reveal stochastic dominance. Action: Use the chart to determine the percentage of units falling below an acceptable efficiency threshold (e.g., 0.8).`, 
+                    () => { const sorted = [...scores].sort((a,b)=>a-b); const y = sorted.map((_,i) => (i+1)/sorted.length); Plotly.newPlot('fig2', [{ x: sorted, y: y, mode: 'lines', line: {shape: 'hv', color: '#0f172a', width:3} }], {...commonLayout, yaxis:{title:'Probability'}}, {responsive:true}); }
+                );
+                
+                addChart('fig3', 'Figure 3: 3D Production Surface', 'Multivariate', 
+                    `This 3D scatter plot provides a spatial visualization of the production possibility set for models with at least two inputs and one output. The axes represent the quantities of inputs and outputs. The green data points (Efficiency Score > 0.99) effectively map out the 'efficient frontier'—the surface of best practice that envelops the data. Red points lying beneath this surface represent inefficient units. The vertical distance or gap between a red point and the virtual surface defined by the green points graphically represents the degree of inefficiency. In variable returns to scale models, this surface creates a convex hull around the data. Action: Rotate the 3D model to see which inefficient units (red) are "trapped" beneath specific clusters of efficient units (green).`, 
+                    () => { if(config.inputs.length >= 2 && config.outputs.length >= 1) { const x = rawData.map(r => r[config.inputs[0]]), y = rawData.map(r => r[config.inputs[1]]), z = rawData.map(r => r[config.outputs[0]]); Plotly.newPlot('fig3', [{ type: 'scatter3d', mode: 'markers', x:x, y:y, z:z, marker: {color: scores.map(s=>s>0.99?'#10b981':'#ef4444'), size: 5, opacity:0.8} }], { scene: { xaxis:{title:config.inputs[0]}, yaxis:{title:config.inputs[1]}, zaxis:{title:config.outputs[0]} }, margin: {t:0,b:0,l:0,r:0} }, {responsive:true}); } else { document.getElementById('fig3').innerHTML = '<p class="text-center text-slate-400 mt-20">Need 2+ Inputs, 1+ Output.</p>'; } }
+                );
+                
+                addChart('fig4', 'Figure 4: Parallel Coordinates', 'Multivariate', 
+                    `This multivariate visualization maps every DMU as a single polyline connecting its values across multiple vertical axes (Inputs, Outputs, and Efficiency Score). It is particularly powerful for high-dimensional data where 3D plots fail. You can trace the profile of efficient units (yellow/green lines) to see if they share common characteristics, such as consistently low values in specific inputs. Conversely, you can identify if inefficient units (purple/blue lines) suffer from excesses in specific resources across the board. Crossing lines indicate negative correlations between variables, while parallel lines indicate positive correlations. Action: Look for crossing lines between input axes; this often indicates trade-offs or negative correlations between resources.`, 
+                    () => { const dims = [ { label: 'Score', values: scores }, ...config.inputs.map(k => ({ label: k, values: rawData.map(r => r[k]) })), ...config.outputs.map(k => ({ label: k, values: rawData.map(r => r[k]) })) ]; Plotly.newPlot('fig4', [{ type: 'parcoords', line: {color: scores, colorscale: 'Viridis'}, dimensions: dims }], { margin: {t:30,b:10,l:40,r:40} }, {responsive:true}); }
+                );
+                
+                addChart('fig5', 'Figure 5: Input-Output Correlation', 'Relationship', 
+                    `This heatmap displays the Pearson correlation coefficients between all pairs of input and output variables. In a well-specified DEA model, you typically expect positive correlations (blue squares) between inputs and outputs—meaning more resources should generally lead to more products. A value near zero or a negative correlation (red squares) between an input and an output suggests that the input might not be significantly contributing to the production process, potentially indicating that variable selection should be revisited. High correlations between inputs (multicollinearity) do not strictly violate DEA assumptions but suggest redundancy. Action: If an Input-Output pair is red (negative correlation), consider removing that input as it doesn't drive production.`, 
+                    () => { const vars = [...config.inputs, ...config.outputs]; const z = vars.map(v1 => vars.map(v2 => ss.sampleCorrelation(rawData.map(r=>r[v1]), rawData.map(r=>r[v2])))); Plotly.newPlot('fig5', [{ z: z, x: vars, y: vars, type: 'heatmap', colorscale: 'RdBu', zmin:-1, zmax:1 }], {...commonLayout, margin:{t:10,l:100,b:100}}, {responsive:true}); }
+                );
+                
+                addChart('fig6', 'Figure 6: Efficiency Violin Plot', 'Distribution', 
+                    `The Violin plot combines the summary statistics of a box plot with a kernel density estimation (the curved width). The width of the 'violin' at any given y-value represents the frequency of DMUs with that efficiency score. This allows you to see the full shape of the distribution, including multiple peaks (bimodality) that a simple box plot would hide. For example, a shape with two bulges might indicate two distinct groups of performers—leaders and laggards—within your dataset. The internal box plot still shows the median and interquartile range for reference. Action: If the violin is wide at the bottom and thin at the top, efficiency is generally poor; focus on lifting the bottom performers.`, 
+                    () => Plotly.newPlot('fig6', [{ y: scores, type: 'violin', box: {visible:true}, line: {color: '#8b5cf6'}, points: 'all', jitter: 0.3, fillcolor:'#ddd6fe'}], {...commonLayout, yaxis:{range:[0,1.1]}}, {responsive:true})
+                );
+                
+                addChart('fig7', 'Figure 7: Peer Reference Flow (Sankey)', 'Flow', 
+                    `This Sankey diagram maps the flow of benchmarking influence within your dataset. On the left side, you see the Inefficient DMUs (Source nodes), and on the right, the Efficient Peers (Target nodes) they reference. The width of each connecting band is proportional to the lambda weight calculated by the model, indicating the strength of the reference. Thick bands show that a specific efficient unit serves as a primary role model for an inefficient one. This helps identify which best-practice units are the most 'influential' benchmarks that others should strive to emulate. Action: Identify the thickest flows to find the 'Primary Peers' that act as the main models for specific inefficient groups.`, 
+                    () => { const nodes = deaResults.map(r => r.dmu); const source = [], target = [], value = []; deaResults.forEach((r, i) => { if(!r.isEfficient) r.lambdas.forEach((l, j) => { if(l > 0.05) { source.push(i); target.push(j); value.push(l); } }); }); Plotly.newPlot('fig7', [{ type: "sankey", node: { label: nodes, pad: 15, thickness: 20, line: {color: "black", width: 0.5}, color: deaResults.map(r=>r.isEfficient?'#10b981':'#ef4444') }, link: { source, target, value } }], { margin: {t:10, l:10, r:10, b:10} }, {responsive:true}); }
+                );
+                
+                addChart('fig8', 'Figure 8: Normalized Input Usage', 'Comparison', 
+                    `This box plot comparison highlights resource wastage by splitting the data into 'Efficient' (Green) and 'Inefficient' (Red) groups. To allow comparison across different units of measurement (e.g., dollars vs staff count), all input data is normalized by dividing by the mean. You typically see that the 'Inefficient' boxes are positioned significantly higher than the 'Efficient' ones, visually confirming that inefficient units consistently use more resources relative to the average. The vertical distance between the medians of the red and green boxes represents the average potential savings gap for that specific resource. Action: Focus cost-cutting efforts on variables where the gap between Red (Inefficient) and Green (Efficient) boxes is largest.`, 
+                    () => { const y=[], x=[], c=[]; config.inputs.forEach(k => { const vals = rawData.map(r=>r[k]), mean = ss.mean(vals); deaResults.forEach((r,i) => { y.push(vals[i]/mean); x.push(k); c.push(r.isEfficient?'Efficient':'Inefficient'); }); }); Plotly.newPlot('fig8', [{ y: y, x: x, type: 'box', transforms: [{ type: 'groupby', groups: c, styles: [{target: 'Efficient', value: {marker: {color: '#10b981'}}}, {target: 'Inefficient', value: {marker: {color: '#ef4444'}}}] }] }], {...commonLayout, boxmode: 'group'}, {responsive:true}); }
+                );
+                
+                addChart('fig9', 'Figure 9: Scatter Plot Matrix', 'Multivariate', 
+                    `This grid of pairwise scatter plots allows you to inspect the relationships between every combination of input and output variables simultaneously. The efficient units (colored Green) typically reside on the 'boundary' or upper-left edge of these data clouds (for input vs output plots), visually defining the empirical frontier. This view is essential for spotting non-linear relationships, identifying multivariate outliers that deviate from the main cluster, and verifying that the efficient units indeed represent the 'best' performance ratios (e.g., highest output for lowest input) across all dimensions. Action: Scan for green dots; they should consistently appear at the edges of the cloud, enveloping the red (inefficient) dots.`, 
+                    () => { const dims = [...config.inputs, ...config.outputs].map(k => ({ label: k, values: rawData.map(r=>r[k]) })); Plotly.newPlot('fig9', [{ type: 'splom', dimensions: dims, marker: {color: scores.map(s=>s>0.99?'#10b981':'#ef4444'), size: 4, line:{color:'white',width:0.5}} }], { margin: {t:30,l:40,b:40,r:20} }, {responsive:true}); }
+                );
+                
+                addChart('fig10', 'Figure 10: Lorenz Curve', 'Inequality', 
+                    `Adapted from economics, the Lorenz curve illustrates the disparity in efficiency performance within your dataset. The x-axis represents the cumulative percentage of the population (sorted by score), and the y-axis represents the cumulative percentage of the total efficiency score sum. The diagonal dashed line represents perfect equality (where everyone has the exact same score). The degree to which the blue curve bows below this diagonal (the Gini gap) indicates the level of inequality. A deep sag means performance is highly concentrated in a few top units while the vast majority lag significantly behind. Action: A deep curve implies 'Star Performers' dominate; investigate what unique practices they have that the majority lack.`, 
+                    () => { const sSorted = [...scores].sort((a,b)=>a-b); const cumSum = []; sSorted.reduce((a,b,i) => cumSum[i] = a+b, 0); const y = [0, ...cumSum.map(v => v/cumSum[cumSum.length-1])]; const x = Array.from({length: y.length}, (_, i) => i/(y.length-1)); Plotly.newPlot('fig10', [{ x:x, y:y, fill: 'tozeroy', name:'Lorenz', line:{color:'#4f46e5'} }, { x:[0,1], y:[0,1], mode:'lines', line:{dash:'dash', color:'gray'} }], {...commonLayout, xaxis:{title:'Cumulative % Pop'}, yaxis:{title:'Cumulative % Score'}}, {responsive:true}); }
+                );
+                
+                addChart('fig11', 'Figure 11: % Improvement Potential', 'Actionable', 
+                    `This heatmap provides a precise, actionable 'to-do list' for every inefficient DMU. It calculates exactly by what percentage each input needs to be reduced (or output increased) to project the unit onto the efficient frontier. Darker red cells indicate areas requiring drastic cuts (e.g., >50% reduction). White or light cells indicate that the variable is already close to target levels. This chart allows managers to prioritize which specific resources to focus on cutting to achieve the quickest efficiency gains for each specific unit. Action: Sort by DMU and find the "Dark Red" cells; these are the immediate priority areas for cost reduction for those specific units.`, 
+                    () => { 
+                        const nonEff = deaResults.filter(r => !r.isEfficient); 
+                        if(nonEff.length > 0) { 
+                            const z = nonEff.map(r => [ 
+                                ...config.inputs.map((k,i) => (r.targetInputs[i] - rawData.find(d=>d[config.dmu]===r.dmu)[k])/rawData.find(d=>d[config.dmu]===r.dmu)[k] * 100), 
+                                ...config.outputs.map((k,i) => (r.targetOutputs[i] - rawData.find(d=>d[config.dmu]===r.dmu)[k])/rawData.find(d=>d[config.dmu]===r.dmu)[k] * 100) 
+                            ]); 
+                            const x = [...config.inputs.map(s=>s+" (In)"), ...config.outputs.map(s=>s+" (Out)")]; 
+                            Plotly.newPlot('fig11', [{ z: z, x: x, y: nonEff.map(r=>r.dmu), type: 'heatmap', colorscale: 'Reds', reversescale: true }], {...commonLayout, margin:{t:10,l:60,b:60}}, {responsive:true}); 
+                        } else { 
+                            document.getElementById('fig11').innerHTML = '<p class="p-10 text-center text-slate-400">All units are efficient.</p>'; 
+                        } 
+                    }
+                );
+                
+                addChart('fig12', 'Figure 12: Peer Reference Frequency', 'Benchmarking', 
+                    `This bar chart identifies the 'Global Leaders' or 'Robust Benchmarks' in your dataset. It counts how many times each Efficient DMU appears in the reference set (peer group) of an inefficient unit. A tall bar means that unit is a role model for many others, suggesting its input-output mix is a common, achievable target structure. Conversely, an efficient unit with a very small bar might be a 'niche' performer—efficient only because its mix is so unique (e.g., extremely low use of one specific input) that no one else can be compared to it. Action: Adopt the practices of the units with the tallest bars; they are the most generally applicable role models.`, 
+                    () => { 
+                        const counts = {}; 
+                        deaResults.forEach(r => { 
+                            if(!r.isEfficient) r.lambdas.forEach((l, i) => { 
+                                if(l>0.01) counts[deaResults[i].dmu] = (counts[deaResults[i].dmu]||0)+1; 
+                            }); 
+                        }); 
+                        const keys = Object.keys(counts), vals = Object.values(counts); 
+                        Plotly.newPlot('fig12', [{ x: keys, y: vals, type: 'bar', marker: {color: vals, colorscale: 'Blues'} }], {...commonLayout}, {responsive:true}); 
+                    }
+                );
+
+                // --- REPLACED FIGURES 13, 18, 19, 20 ---
+
+                // REPLACEMENT 13: Lambda Interaction Matrix (Heatmap)
+                addChart('fig13', 'Figure 13: Lambda Interaction Matrix', 'Peer Analysis',
+                    `This heatmap provides a detailed matrix view of the benchmarking relationships. The rows represent Inefficient DMUs, while the columns represent Efficient Peers. The color intensity (Z-value) represents the Lambda weight—the strength of the reference. A dark square indicates that the specific Inefficient unit (Row) relies heavily on that specific Peer (Column) for its target setting. This is superior to a simple frequency count as it reveals the *depth* of the relationship. It helps you see if an inefficient unit benchmarks against a single peer (one dark square) or a portfolio of peers (many light squares). Action: Use to find specific peer pairs; e.g., "Unit A should copy Unit B specifically."`,
+                    () => {
+                        const ineff = deaResults.filter(r => !r.isEfficient).map(r => r.dmu);
+                        const eff = deaResults.filter(r => r.isEfficient).map(r => r.dmu);
+                        if(ineff.length === 0) { document.getElementById('fig13').innerHTML = '<p class="p-10 text-center text-slate-400">All units efficient.</p>'; return; }
+                        
+                        // Create Matrix
+                        const z = ineff.map(inName => {
+                            const r = deaResults.find(d => d.dmu === inName);
+                            return eff.map(effName => {
+                                const effIdx = deaResults.findIndex(d => d.dmu === effName);
+                                return r.lambdas[effIdx] || 0;
+                            });
+                        });
+
+                        Plotly.newPlot('fig13', [{
+                            z: z, x: eff, y: ineff, type: 'heatmap', colorscale: 'Mint', showscale: true
+                        }], {...commonLayout, margin:{t:10,l:100,b:60}}, {responsive:true});
+                    }
+                );
+
+                addChart('fig14', 'Figure 14: Avg Inefficiency Gap', 'Radar', 
+                    `This radar chart aggregates the performance of all inefficient units to show the 'Average Gap'. The blue polygon represents the current average consumption (normalized to 100%). The orange polygon represents the theoretical target consumption if all those units were efficient. The empty space between the blue and orange lines graphically represents the industry-wide waste. If the orange shape is significantly smaller than the blue one across all axes, it implies systemic inefficiency across all resource types. If the gap is only on one axis, the inefficiency is localized to that specific input. Action: If the gap is wide on one specific axis (e.g., Staff), launch a targeted HR efficiency program across the whole firm.`, 
+                    () => { const nonEff = deaResults.filter(r => !r.isEfficient); if(nonEff.length > 0) { const avgAct = config.inputs.map((k,i) => nonEff.reduce((s,r) => s + rawData.find(d=>d[config.dmu]===r.dmu)[k], 0)/nonEff.length); const avgTgt = config.inputs.map((k,i) => nonEff.reduce((s,r) => s + r.targetInputs[i], 0)/nonEff.length); const rAct = avgAct.map(()=>100); const rTgt = avgTgt.map((v,i) => (v/avgAct[i])*100); Plotly.newPlot('fig14', [ { type: 'scatterpolar', r: [...rAct, rAct[0]], theta: [...config.inputs, config.inputs[0]], fill: 'toself', name: 'Actual' }, { type: 'scatterpolar', r: [...rTgt, rTgt[0]], theta: [...config.inputs, config.inputs[0]], fill: 'toself', name: 'Target' } ], { polar: {radialaxis: {visible: true, range: [0, 100]}}, margin: {t:30,b:30} }, {responsive:true}); } else { document.getElementById('fig14').innerHTML = '<p class="p-10 text-center text-slate-400">All units are efficient.</p>'; } }
+                );
+                
+                addChart('fig15', 'Figure 15: Returns to Scale Map', 'Scale Analysis', 
+                    `This scatter plot is critical for Variable Returns to Scale (VRS) analysis. It plots Efficiency (Y-axis) against the Sum of Lambdas (X-axis). The Sum of Lambdas serves as a proxy for scale. Points to the left of 1.0 (Sum < 1) are operating under Increasing Returns to Scale (IRS)—they are too small and could increase efficiency by scaling up. Points to the right (Sum > 1) are under Decreasing Returns to Scale (DRS)—they are too large and suffering from complexity costs. Points near 1.0 are at Optimal Scale. This guides strategic decisions on mergers (for IRS units) or divestitures (for DRS units). Action: Recommend expansion for units with Sum < 1 (IRS) and downsizing/splitting for units with Sum > 1 (DRS).`, 
+                    () => { const sumLambdas = deaResults.map(r => r.lambdas.reduce((a,b)=>a+b,0)); Plotly.newPlot('fig15', [{ x: sumLambdas, y: scores, mode: 'markers', marker: { color: sumLambdas.map(v => v<0.99?'orange':v>1.01?'purple':'green'), size: 10, line:{color:'white',width:1} }, text: deaResults.map((r,i) => `${r.dmu} (${sumLambdas[i]<0.99?'IRS':sumLambdas[i]>1.01?'DRS':'Optimal'})`) }], { ...commonLayout, xaxis: {title: 'Sum of Lambdas (Scale)'}, yaxis: {title: 'Efficiency'}, shapes: [{type: 'line', x0: 1, x1: 1, y0: 0, y1: 1, line:{dash:'dot'}}] }, {responsive:true}); }
+                );
+                
+                addChart('fig16', 'Figure 16: Peer Network', 'Network', 
+                    `This network graph visualizes the benchmarking relationships as a directed graph. The nodes (circles) represent the DMUs. Efficient units are green, while inefficient ones are red. A line (edge) connects an inefficient unit to its efficient peer. The layout reveals clusters of units that all reference the same set of peers. Isolated efficient nodes (with no incoming lines) are efficient but 'unique'—they do not serve as benchmarks for anyone else. Highly connected hubs are the central reference points for the dataset, indicating that their operational model is broadly applicable and robust. Action: Identify 'Hubs' (nodes with many connections) as Centers of Excellence to study; ignore isolated green nodes as outliers.`, 
+                    () => { 
+                        const nodesX = [], nodesY = [], nodeColor = [], nodeText = []; 
+                        const edgeX = [], edgeY = []; 
+                        const radius = 10; 
+                        deaResults.forEach((r, i) => { 
+                            const angle = (i / deaResults.length) * 2 * Math.PI; 
+                            const nx = radius * Math.cos(angle); 
+                            const ny = radius * Math.sin(angle); 
+                            nodesX.push(nx); nodesY.push(ny); 
+                            nodeColor.push(r.isEfficient ? '#10b981' : '#ef4444'); 
+                            nodeText.push(r.dmu); 
+                        }); 
+                        deaResults.forEach((r, i) => { 
+                            if(!r.isEfficient) { 
+                                r.lambdas.forEach((l, j) => { 
+                                    if(l > 0.05) { edgeX.push(nodesX[i], nodesX[j], null); edgeY.push(nodesY[i], nodesY[j], null); } 
+                                }); 
+                            } 
+                        }); 
+                        Plotly.newPlot('fig16', [ { x: edgeX, y: edgeY, mode: 'lines', line: {color: '#cbd5e1', width: 0.5}, hoverinfo: 'none' }, { x: nodesX, y: nodesY, mode: 'markers+text', marker: {color: nodeColor, size: 20, line:{color:'white', width:2}}, text: nodeText, textposition: 'top center' } ], { ...commonLayout, showlegend: false, xaxis:{showgrid:false, zeroline:false, showticklabels:false}, yaxis:{showgrid:false, zeroline:false, showticklabels:false} }, {responsive: true}); 
+                    }
+                );
+                
+                addChart('fig17', 'Figure 17: 3D Frontier Manifold', '3D Model', 
+                    `This 3D chart reconstructs the theoretical production frontier surface. It creates a mesh using the first three variables in your model. Efficient units (peaks) form the "roof" of this structure. Inefficient units sit underneath this mesh. This helps visualize the convexity of the production set. In a VRS model, this surface is faceted; in a CRS model, it would be a cone. Seeing the shape helps intuitively grasp "how far" units are from the optimal surface. Gaps in the mesh might indicate regions of the production space that are technologically infeasible or simply unexplored by your current dataset. Action: Visually estimate the distance of red dots (inefficient) from the surface mesh to gauge improvement difficulty.`, 
+                    () => { let v1=config.inputs[0], v2=config.inputs[1]||config.outputs[0], v3=config.outputs[0]; const x = rawData.map(r=>r[v1]), y = rawData.map(r=>r[v2]), z = rawData.map(r=>r[v3]); Plotly.newPlot('fig17', [{ x:x, y:y, z:z, type: 'mesh3d', opacity:0.8, intensity: scores, colorscale:'Viridis' }], {margin:{t:0,b:0,l:0,r:0}, scene:{xaxis:{title:v1}, yaxis:{title:v2}, zaxis:{title:v3}}}, {responsive:true}); }
+                );
+
+                // REPLACEMENT 18: Frontier Projection Scatter
+                addChart('fig18', 'Figure 18: Frontier Projection Map', 'Optimization Path',
+                    `This scatter plot visualizes the path to efficiency for your first Input and Output variables. The dots represent your actual units. The green dots are already efficient. The red dots are inefficient. The grey arrows (lines) connect each inefficient unit to its specific "Target" position on the efficient frontier. The length of this line graphically represents the magnitude of the necessary improvement. A long vertical line implies a massive need for output augmentation, while a long horizontal line implies a need for drastic resource cutting. This visualization grounds the abstract "efficiency score" in concrete, physical dimensions. Action: Prioritize units with the longest projection lines, as they are furthest from best practice.`,
+                    () => {
+                        const i1 = config.inputs[0], o1 = config.outputs[0];
+                        const xAct = rawData.map(r => r[i1]);
+                        const yAct = rawData.map(r => r[o1]);
+                        
+                        const traces = [];
+                        
+                        // 1. Efficient Units
+                        traces.push({
+                            x: xAct.filter((_,i) => deaResults[i].isEfficient),
+                            y: yAct.filter((_,i) => deaResults[i].isEfficient),
+                            mode: 'markers',
+                            name: 'Efficient',
+                            marker: {color: '#10b981', size: 10, symbol: 'star'}
+                        });
+
+                        // 2. Inefficient Units & Projections
+                        deaResults.forEach((r, idx) => {
+                            if(!r.isEfficient) {
+                                // Original Point
+                                const xOrig = xAct[idx];
+                                const yOrig = yAct[idx];
+                                // Target Point
+                                const xTgt = r.targetInputs[0]; // Corresponds to i1
+                                const yTgt = r.targetOutputs[0]; // Corresponds to o1
+                                
+                                // Draw Line
+                                traces.push({
+                                    x: [xOrig, xTgt],
+                                    y: [yOrig, yTgt],
+                                    mode: 'lines+markers',
+                                    line: {color: '#94a3b8', width: 1, dash: 'dot'},
+                                    marker: {
+                                        color: ['#ef4444', '#10b981'], // Start red, end green
+                                        size: [8, 0], // Only show start marker size here
+                                        symbol: 'circle'
+                                    },
+                                    showlegend: false,
+                                    hoverinfo: 'text',
+                                    text: [`${r.dmu} (Current)`, `${r.dmu} (Target)`]
+                                });
+                            }
+                        });
+
+                        // Add Legend Dummy for Inefficient
+                        traces.push({
+                            x: [null], y: [null], mode:'markers', name:'Inefficient', marker:{color:'#ef4444', size:8}
+                        });
+
+                        Plotly.newPlot('fig18', traces, {...commonLayout, xaxis:{title:i1}, yaxis:{title:o1}, hovermode:'closest'}, {responsive:true});
+                    }
+                );
+
+                // REPLACEMENT 19: Scale Efficiency vs Size (Bubble Chart)
+                addChart('fig19', 'Figure 19: Efficiency vs. Unit Size', 'Scale Analysis',
+                    `This bubble chart tests the hypothesis: "Are larger units more efficient?" The X-axis represents the size of the unit (measured by your first Input variable), while the Y-axis represents the Efficiency Score. The bubble size itself can represent a second input or output. If you see a trend line moving upwards, it indicates 'Economies of Scale'—bigger is better. If the trend is flat or random, efficiency is scale-independent. If it curves down, you have 'Diseconomies of Scale'. This visualization is essential for strategic planning regarding mergers and acquisitions or facility sizing. Action: If a positive trend exists, prioritize growth strategies; if negative, consider breaking up large units.`,
+                    () => {
+                        const sizeVar = config.inputs[0];
+                        const xVals = rawData.map(r => r[sizeVar]);
+                        Plotly.newPlot('fig19', [{
+                            x: xVals,
+                            y: scores,
+                            mode: 'markers',
+                            marker: {
+                                size: scores.map(s => s*20), // larger score = larger bubble visually
+                                color: scores,
+                                colorscale: 'Viridis',
+                                showscale: true
+                            },
+                            text: deaResults.map(r => r.dmu)
+                        }], {...commonLayout, xaxis:{title: `Unit Size (${sizeVar})`}, yaxis:{title:'Efficiency Score'}}, {responsive:true});
+                    }
+                );
+
+                // REPLACEMENT 20: Input-Output Ratios (Box Plot)
+                addChart('fig20', 'Figure 20: Input-Output Ratio Analysis', 'Benchmarking',
+                    `This chart compares the operational ratios (Productivity = Output / Input) between the Efficient (Green) and Inefficient (Red) groups. It takes your first Output and divides it by your first Input to create a simple productivity metric. In a healthy DEA model, the Efficient group should have a significantly higher median ratio and a tighter distribution. If the boxes overlap significantly, it suggests that this specific simple ratio is not the main driver of the complex efficiency score, or that the model is finding efficiency through other variable combinations. Action: If the Green box is much higher than the Red box, use this simple ratio as a quick-and-dirty KPI for daily tracking.`,
+                    () => {
+                        const i1 = config.inputs[0], o1 = config.outputs[0];
+                        const ratios = rawData.map(r => r[o1] / (r[i1] || 1)); // avoid div by zero
+                        const groups = deaResults.map(r => r.isEfficient ? 'Efficient' : 'Inefficient');
+                        
+                        Plotly.newPlot('fig20', [{
+                            y: ratios,
+                            x: groups,
+                            type: 'box',
+                            boxpoints: 'all',
+                            jitter: 0.3,
+                            pointpos: -1.8,
+                            marker: {color: '#6366f1'},
+                            transforms: [{
+                                type: 'groupby',
+                                groups: groups,
+                                styles: [
+                                    {target: 'Efficient', value: {marker: {color: '#10b981'}}},
+                                    {target: 'Inefficient', value: {marker: {color: '#ef4444'}}}
+                                ]
+                            }]
+                        }], {...commonLayout, yaxis:{title: `Ratio: ${o1} / ${i1}`}}, {responsive:true});
+                    }
+                );
+
+            } catch(e) { console.error("DEA Render Error", e); }
+        }
+
+        // --- NEW EXTENSIVE REPORT GENERATOR ---
+        function generateSummaryReport(config, scores, efficientUnits) {
+            const meanScore = (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(3);
+            const minScore = Math.min(...scores).toFixed(3);
+            const effCount = efficientUnits.length;
+            const ineffCount = scores.length - effCount;
+            const pctEff = ((effCount/scores.length)*100).toFixed(1);
+            
+            const peerCounts = {};
+            deaResults.forEach(r => { if(!r.isEfficient) r.lambdas.forEach((l, i) => { if(l>0.01) peerCounts[deaResults[i].dmu] = (peerCounts[deaResults[i].dmu]||0)+1; }); });
+            const topPeers = Object.entries(peerCounts).sort((a,b)=>b[1]-a[1]);
+            const bestPeer = topPeers[0] || ['None', 0];
+
+            let totalInputSave = 0;
+            deaResults.forEach(r => { if(r.inSlacks) totalInputSave += r.inSlacks.reduce((a,b)=>a+b,0); });
+
+            // Fix for SyntaxError: simplified ternary to prevent parser confusion
+            let gapAnalysis = 'narrow efficiency gap suggests a highly competitive internal environment.';
+            if (minScore < 0.6) {
+                gapAnalysis = 'large efficiency gap suggests that operational practices vary wildly across the organization, pointing to a lack of standardization.';
+            }
+
+            const report = `
+                <div class="report-section">
+                    <h2 class="text-3xl font-bold text-slate-800 border-b-2 border-slate-200 pb-4 mb-6">Executive Analytics Report</h2>
+                    
+                    <h3 class="report-h3">1. Executive Overview & Scope</h3>
+                    <p class="report-p">
+                        This strategic performance report provides a rigorous, data-driven evaluation of organizational efficiency across <strong>${scores.length} Decision Making Units (DMUs)</strong>. 
+                        By leveraging a <strong>${config.orient === 'input' ? 'Input-Oriented (Cost Minimization)' : 'Output-Oriented (Production Maximization)'}</strong> Data Envelopment Analysis (DEA) framework 
+                        under a <strong>${config.rts.toUpperCase()} (Returns to Scale)</strong> assumption, we have isolated the mathematical "frontier of best practice." 
+                        The model assesses the transformation of key resources (${config.inputs.join(', ')}) into critical outcomes (${config.outputs.join(', ')}).
+                    </p>
+                    <p class="report-p">
+                        The aggregated results indicate a system-wide average efficiency of <strong>${meanScore}</strong>. 
+                        Currently, <strong>${effCount} units (${pctEff}%)</strong> define the efficient frontier, operating at optimal capacity (Score = 1.0). 
+                        Conversely, the remaining <strong>${ineffCount} units</strong> exhibit varying degrees of inefficiency, with the lowest performer scoring <strong>${minScore}</strong>. 
+                        This operational variance represents a significant opportunity cost. Bringing all units to the frontier would theoretically unlock substantial resource savings or output gains without additional investment.
+                    </p>
+                    <p class="report-p">
+                        The existence of a ${gapAnalysis}
+                    </p>
+                </div>
+
+                <div class="report-section">
+                    <h3 class="report-h3">2. Methodological Integrity & Data Health (Part I)</h3>
+                    <p class="report-p">
+                        The validity of any DEA model is contingent upon the quality of the underlying data. 
+                        Before interpreting efficiency scores, we must audit the statistical properties of the input variables, as visualized in the <strong>Exploratory Data Analysis (EDA)</strong> stage.
+                    </p>
+                    <ul class="report-ul">
+                        <li class="report-li">
+                            <strong>Distributional Robustness:</strong> Referring to <span class="report-fig-ref" onclick="switchTab('eda')">EDA Figure 1 (Histograms)</span> and <span class="report-fig-ref" onclick="switchTab('eda')">EDA Figure 3 (Violin Density)</span>, 
+                            we observe the shape of resource allocation. If the distributions are heavily right-skewed (confirmed by <span class="report-fig-ref" onclick="switchTab('eda')">EDA Figure 14 (Skewness Analysis)</span>), 
+                            it implies that a few large units may be distorting the frontier. DEA is sensitive to such "scale bias." 
+                            If <span class="report-fig-ref" onclick="switchTab('eda')">EDA Figure 15 (Kurtosis)</span> shows high bars, the presence of "fat tails" warns us that extreme values are frequent, necessitating outlier scrutiny.
+                        </li>
+                        <li class="report-li">
+                            <strong>Outlier Detection:</strong> The efficient frontier is, by definition, determined by the outliers—the best performers. However, "bad" outliers (data errors) can create a false frontier that makes everyone else look artificially inefficient. 
+                            <span class="report-fig-ref" onclick="switchTab('eda')">EDA Figure 16 (Outlier Z-Scores)</span> flags any data points exceeding 3 standard deviations. 
+                            Furthermore, <span class="report-fig-ref" onclick="switchTab('eda')">EDA Figure 9 (3D Scatter Explorer)</span> allows for the detection of multivariate outliers that may not appear extreme in isolation but are anomalous in combination (e.g., high cost but low output). 
+                            Rigorous validation of units flagged in these charts is recommended.
+                        </li>
+                        <li class="report-li">
+                            <strong>Isotonicity & Correlation:</strong> A fundamental assumption of DEA is that inputs are positively correlated with outputs (i.e., more resources should yield more product). 
+                            <span class="report-fig-ref" onclick="switchTab('dea')">DEA Figure 5 (Input-Output Correlation)</span> validates this. 
+                            Red squares (negative correlation) in this heatmap would suggest that an input is counter-productive or irrelevant, potentially warranting its removal from the model to improve discriminatory power.
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="report-section">
+                    <h3 class="report-h3">3. Operational Trajectory Analysis (Part II)</h3>
+                    <p class="report-p">
+                        Moving beyond simple scores, we examine the structural characteristics of the efficiency frontier and the path required for inefficient units to reach it.
+                    </p>
+                    <ul class="report-ul">
+                        <li class="report-li">
+                            <strong>Frontier Topology:</strong> The 3D visualization in <span class="report-fig-ref" onclick="switchTab('dea')">DEA Figure 3 (Production Surface)</span> and <span class="report-fig-ref" onclick="switchTab('dea')">DEA Figure 17 (3D Frontier Manifold)</span> 
+                            reveals the shape of the production possibility set. The convexity of this surface determines the difficulty of improvement. 
+                            Units located in "steep" regions of the manifold face high marginal costs of improvement, while those in "flat" regions can improve significantly with minor adjustments.
+                        </li>
+                        <li class="report-li">
+                            <strong>Projection Dynamics:</strong> The newly generated <span class="report-fig-ref" onclick="switchTab('dea')">DEA Figure 18 (Frontier Projection Map)</span> is critical for operational planning. 
+                            It visualizes the vector path from a unit's current state (Red dot) to its optimal target (Green star). 
+                            Long projection lines indicate a massive disconnect between resource usage and output generation. 
+                            Managers should prioritize intervention for units with the longest projection vectors, as these represent the greatest "distance to health."
+                        </li>
+                        <li class="report-li">
+                            <strong>Inequality Profiling:</strong> <span class="report-fig-ref" onclick="switchTab('dea')">DEA Figure 10 (Lorenz Curve)</span> quantifies the concentration of efficiency. 
+                            A deep bow in this curve suggests a "Winner Take All" dynamic where a small elite group dominates. 
+                            Combined with <span class="report-fig-ref" onclick="switchTab('dea')">DEA Figure 2 (Empirical CDF)</span>, we can probabilistically assess the risk profile of the portfolio. 
+                            For example, if 80% of units are below 0.7 efficiency, the system is structurally underperforming.
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="report-section">
+                    <h3 class="report-h3">4. Peer Ecology & Benchmarking Networks (Part III)</h3>
+                    <p class="report-p">
+                        DEA does not just tell you *that* you are inefficient; it tells you *who* you should copy. The sociometry of the peer reference set is vital for knowledge transfer.
+                    </p>
+                    <ul class="report-ul">
+                        <li class="report-li">
+                            <strong>The "Global Leader" Phenomenon:</strong> <span class="report-fig-ref" onclick="switchTab('dea')">DEA Figure 12 (Peer Reference Frequency)</span> identifies the "Role Models" of the dataset. 
+                            Unit <strong>${bestPeer[0]}</strong> is referenced by <strong>${bestPeer[1]}</strong> other units. 
+                            This high frequency implies that its operational mix (Input/Output ratio) is robust, scalable, and applicable to a wide variety of other units. 
+                            It is a "Generalist Leader." In contrast, efficient units with low frequency counts are "Specialists"—efficient only in their specific niche.
+                        </li>
+                        <li class="report-li">
+                            <strong>Cluster Analysis:</strong> <span class="report-fig-ref" onclick="switchTab('dea')">DEA Figure 13 (Lambda Interaction Matrix)</span> and <span class="report-fig-ref" onclick="switchTab('dea')">DEA Figure 16 (Peer Network)</span> 
+                            reveal the underlying clusters. If the matrix shows distinct blocks of interaction, it implies the existence of sub-groups (e.g., "High Volume/Low Margin" vs "Low Volume/High Margin") that only benchmark against themselves. 
+                            Cross-pollinating best practices between these distinct clusters can often yield breakthrough innovations.
+                        </li>
+                        <li class="report-li">
+                            <strong>Specific Mentorship:</strong> The <span class="report-fig-ref" onclick="switchTab('dea')">DEA Figure 7 (Sankey Diagram)</span> traces the exact flow of influence. 
+                            Managers of inefficient units should utilize this chart to identify their specific primary peer and initiate a direct mentorship or knowledge-sharing program.
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="report-section">
+                    <h3 class="report-h3">5. Strategic Roadmap & Resource Rationalization (Part IV)</h3>
+                    <p class="report-p">
+                        The analysis culminates in specific, quantifiable targets for resource allocation and strategic positioning.
+                    </p>
+                    <ul class="report-ul">
+                        <li class="report-li">
+                            <strong>Targeted Resource Reduction:</strong> <span class="report-fig-ref" onclick="switchTab('dea')">DEA Figure 11 (% Improvement Potential)</span> serves as the "Heatmap of Urgency." 
+                            It translates the abstract efficiency score into concrete percentage cuts. 
+                            If a column corresponding to "Labor" is consistently red across multiple rows, it indicates a systemic over-staffing issue rather than a unit-specific failure. 
+                            This warrants a centralized HR policy review rather than isolated firings.
+                        </li>
+                        <li class="report-li">
+                            <strong>Scale Strategy:</strong> <span class="report-fig-ref" onclick="switchTab('dea')">DEA Figure 15 (Returns to Scale Map)</span> guides M&A activity. 
+                            Units in the "IRS" (Increasing Returns to Scale) zone are too small to be efficient; they suffer from high fixed costs per unit. 
+                            The strategy here is **Growth or Consolidation**. 
+                            Units in the "DRS" (Decreasing Returns to Scale) zone are too large; they suffer from bureaucratic complexity. 
+                            The strategy here is **Streamlining or Divestiture**. 
+                            <span class="report-fig-ref" onclick="switchTab('dea')">DEA Figure 19 (Efficiency vs Size)</span> confirms whether a "Bigger is Better" hypothesis holds true for this industry.
+                        </li>
+                        <li class="report-li">
+                            <strong>Systemic Waste:</strong> Finally, <span class="report-fig-ref" onclick="switchTab('dea')">DEA Figure 14 (Avg Inefficiency Gap)</span> visualizes the total waste in the system. 
+                            The gap between the "Actual" and "Target" polygons represents the "dividend of efficiency" available to stakeholders. 
+                            Realizing this dividend requires a disciplined adherence to the targets generated by this model.
+                        </li>
+                    </ul>
+                    <p class="report-p mt-6 border-t pt-4">
+                        <strong>Conclusion:</strong> The path to the efficient frontier is clear. By addressing the specific slack variables identified in Figure 11, adopting the best practices of the Global Leaders identified in Figure 12, and rightsizing operations based on the Scale Map in Figure 15, the organization can expect to see a convergence of performance toward the 1.0 benchmark, minimizing waste and maximizing productive output.
+                    </p>
+                </div>
+            `;
+            
+            document.getElementById('summary-content').innerHTML = report;
+        }
+
+        // --- 6. UTILS ---
+        function switchTab(tabId) {
+            ['data', 'eda', 'regression', 'dea', 'summary'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+            });
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+            const buttons = document.querySelectorAll('.nav-item');
+            buttons.forEach(b => {
+                if(b.innerText.toLowerCase().includes(tabId.replace('summary','5').substring(0,3))) b.classList.add('active');
+            });
+            window.dispatchEvent(new Event('resize'));
+        }
+
+        function updateStatus(msg, type) {
+            const el = document.getElementById('status-indicator');
+            const color = type === 'success' ? 'bg-emerald-500' : 'bg-amber-500';
+            el.innerHTML = `<span class="w-2 h-2 rounded-full ${color}"></span><span class="text-xs font-medium text-slate-500">${msg}</span>`;
+        }
+
+        function downloadExcel() {
+            if(typeof XLSX === 'undefined' || deaResults.length === 0) {
+                alert("Data or Library not ready.");
+                return;
+            }
+            try {
+                const wb = XLSX.utils.book_new();
+                // 1. Raw Data
+                const wsRaw = XLSX.utils.json_to_sheet(rawData);
+                XLSX.utils.book_append_sheet(wb, wsRaw, "Raw Data");
+                
+                // 2. DEA Results
+                const cleanResults = deaResults.map(r => ({
+                    DMU: r.dmu,
+                    Score: r.score,
+                    Efficient: r.isEfficient ? "Yes" : "No",
+                    ...Object.fromEntries(currentDEAConfig.inputs.map((k, i) => [`Target ${k}`, r.targetInputs[i]])),
+                    ...Object.fromEntries(currentDEAConfig.outputs.map((k, i) => [`Target ${k}`, r.targetOutputs[i]]))
+                }));
+                const wsRes = XLSX.utils.json_to_sheet(cleanResults);
+                XLSX.utils.book_append_sheet(wb, wsRes, "DEA Results");
+
+                XLSX.writeFile(wb, "DEA_Analysis_Report.xlsx");
+            } catch(e) {
+                console.error(e);
+                alert("Export failed.");
+            }
+        }
+    </script>
+</body>
+</html>
